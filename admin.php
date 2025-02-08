@@ -18,15 +18,22 @@ function format_time($time) {
     return ($time && $time !== '---' && $time !== 'ABSENT') ? date("g:i A", strtotime($time)) : $time;
 }
 
-// Function to calculate total rendered hours
+// Function to calculate total rendered hours for a single log entry
 function calculate_hours($log) {
-    if (isset($log['am_arrival'], $log['am_departure'], $log['pm_arrival'], $log['pm_departure'])) {
-        $morning_seconds = strtotime($log['am_departure']) - strtotime($log['am_arrival']);
-        $afternoon_seconds = strtotime($log['pm_departure']) - strtotime($log['pm_arrival']);
+    if (
+        isset($log['am_arrival'], $log['am_departure'], $log['pm_arrival'], $log['pm_departure']) &&
+        !empty($log['am_arrival']) && !empty($log['am_departure']) && 
+        !empty($log['pm_arrival']) && !empty($log['pm_departure'])
+    ) {
+        $morning_seconds = max(0, strtotime($log['am_departure']) - strtotime($log['am_arrival']));
+        $afternoon_seconds = max(0, strtotime($log['pm_departure']) - strtotime($log['pm_arrival']));
         $total_seconds = $morning_seconds + $afternoon_seconds;
+
         $hours = floor($total_seconds / 3600);
         $minutes = floor(($total_seconds % 3600) / 60);
-        return "{$hours} hour " . ($minutes > 0 ? "{$minutes} minutes" : "");
+
+        return "{$hours} hour" . ($hours > 1 ? "s" : "") . 
+               ($minutes > 0 ? " {$minutes} minute" . ($minutes > 1 ? "s" : "") : "");
     }
     return '---';
 }
@@ -35,22 +42,33 @@ function calculate_hours($log) {
 function calculate_total_hours($logs) {
     $total_seconds = 0;
     foreach ($logs as $log) {
-        if (isset($log['am_arrival'], $log['am_departure'], $log['pm_arrival'], $log['pm_departure'])) {
-            $morning_seconds = strtotime($log['am_departure']) - strtotime($log['am_arrival']);
-            $afternoon_seconds = strtotime($log['pm_departure']) - strtotime($log['pm_arrival']);
+        if (
+            isset($log['am_arrival'], $log['am_departure'], $log['pm_arrival'], $log['pm_departure']) &&
+            !empty($log['am_arrival']) && !empty($log['am_departure']) && 
+            !empty($log['pm_arrival']) && !empty($log['pm_departure'])
+        ) {
+            $morning_seconds = max(0, strtotime($log['am_departure']) - strtotime($log['am_arrival']));
+            $afternoon_seconds = max(0, strtotime($log['pm_departure']) - strtotime($log['pm_arrival']));
             $total_seconds += $morning_seconds + $afternoon_seconds;
         }
     }
     $hours = floor($total_seconds / 3600);
     $minutes = floor(($total_seconds % 3600) / 60);
-    return "{$hours} hour " . ($minutes > 0 ? "{$minutes} minutes" : "");
+
+    return "{$hours} hour" . ($hours > 1 ? "s" : "") . 
+           ($minutes > 0 ? " {$minutes} minute" . ($minutes > 1 ? "s" : "") : "");
 }
 
 // Handle Log Edit
 if (isset($_POST['edit_log'])) {
-    $edit_date = $_POST['edit_date'];
+    $edit_date = $_POST['log_date']; // Use the date from the form
     $log_type = $_POST['log_type'];
     $new_time = $_POST['new_time'];
+
+    // Ensure AM arrival time is not earlier than 9:00 AM
+    if ($log_type == 'am_arrival' && strtotime($new_time) < strtotime('09:00')) {
+        $new_time = '09:00';
+    }
 
     $logs_data[$selected_user_id][$edit_date][$log_type] = $new_time;
 
@@ -60,12 +78,12 @@ if (isset($_POST['edit_log'])) {
             "header"  => "Content-type: application/json",
             "method"  => "PATCH",
             "content" => json_encode($logs_data[$selected_user_id][$edit_date])
-        ]
+        ]   
     ];
     $context = stream_context_create($options);
     file_get_contents("{$firebase_url}user_logs/{$selected_user_id}/{$edit_date}.json", false, $context);
 
-    echo "<script>alert('Log updated successfully!'); window.location.href='admin.php?user={$selected_user_id}';</script>";
+    echo "<script>Swal.fire('Success', 'Log updated successfully!', 'success').then(() => { window.location.href='admin.php?user={$selected_user_id}'; });</script>";
     exit();
 }
 
@@ -122,6 +140,7 @@ if (isset($_POST['delete_user'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <title>Admin Panel - DTR System</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
     <div class="container mt-4">
@@ -158,7 +177,7 @@ if (isset($_POST['delete_user'])) {
                         <?php foreach ($logs_data[$selected_user_id] as $logDate => $log): ?>
                             <tr>
                                 <td><?php echo htmlspecialchars($logDate); ?></td>
-                                <td><?php echo format_time($log['am_arrival'] ?? '---'); ?></td>
+                                 <td><?php echo (strtotime($log['am_arrival']) < strtotime('09:00')) ? '09:00 AM' : format_time($log['am_arrival'] ?? '---'); ?></td>
                                 <td><?php echo format_time($log['am_departure'] ?? '---'); ?></td>
                                 <td><?php echo format_time($log['pm_arrival'] ?? '---'); ?></td>
                                 <td><?php echo format_time($log['pm_departure'] ?? '---'); ?></td>
@@ -274,6 +293,10 @@ if (isset($_POST['delete_user'])) {
                     <form method="POST">
                         <input type="hidden" name="edit_date" id="edit_date">
                         <div class="mb-3">
+                            <label for="log_date" class="form-label">Date:</label>
+                            <input type="date" name="log_date" id="log_date" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
                             <label for="log_type" class="form-label">Log Type:</label>
                             <select name="log_type" id="log_type" class="form-select" required>
                                 <option value="am_arrival">AM Arrival</option>
@@ -296,6 +319,7 @@ if (isset($_POST['delete_user'])) {
     <script>
         function setEditData(date) {
             document.getElementById("edit_date").value = date;
+            document.getElementById("log_date").value = date;
         }
     </script>
 
