@@ -61,6 +61,27 @@ if (!empty($user_logs)) {
     }
 }
 
+// Determine available log types based on current logs
+$available_log_types = [];
+if (empty($user_logs) || (isset($latest_log['pm_departure']) && $latest_log['pm_departure'])) {
+    $available_log_types = ['AM Arrival'];
+} elseif (isset($latest_log['am_arrival']) && !isset($latest_log['am_departure'])) {
+    $available_log_types = ['AM Departure'];
+} elseif (isset($latest_log['am_departure']) && !isset($latest_log['pm_arrival'])) {
+    $available_log_types = ['PM Arrival'];
+} elseif (isset($latest_log['pm_arrival']) && !isset($latest_log['pm_departure'])) {
+    $available_log_types = ['PM Departure'];
+}
+
+// Determine if the user has already logged all required times for the day
+$already_logged_for_day = false;
+if (!empty($user_logs)) {
+    $latest_log = end($user_logs);
+    if (isset($latest_log['am_arrival']) && isset($latest_log['am_departure']) && isset($latest_log['pm_arrival']) && isset($latest_log['pm_departure'])) {
+        $already_logged_for_day = true;
+    }
+}
+
 // Get month filter (default: current month)
 $selected_month = $_GET['month'] ?? date('Y-m');
 
@@ -125,17 +146,16 @@ function convert_to_12hr($time) {
             <form method="GET" class="d-flex">
                 <label class="me-2 align-self-center"><b>Filter by Month:</b></label>
                 <input type="month" name="month" class="form-control me-2" value="<?php echo $selected_month; ?>">
-                <button type="submit" class="btn btn-primary">Apply</button>
-                
+                <button type="submit" class="btn btn-primary me-2">Apply</button>
             </form>
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#timeLogModal">
-    Log Time
-</button>
             <form method="GET" class="d-flex">
                 <input type="hidden" name="month" value="<?php echo $selected_month; ?>">
                 <input type="date" name="search" class="form-control me-2" value="<?php echo $search_date; ?>">
-                <button type="submit" class="btn btn-primary">Search</button>
+                <button type="submit" class="btn btn-primary me-2">Search</button>
             </form>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="<?php echo $already_logged_for_day ? '#alreadyLoggedModal' : '#timeLogModal'; ?>">
+                Log Time
+            </button>
         </div>
 
         <!-- User Logs Table -->
@@ -195,38 +215,56 @@ function convert_to_12hr($time) {
             </div>
         </div>
     </div>
-<!-- Time Log Modal -->
-<div class="modal fade" id="timeLogModal" tabindex="-1" aria-labelledby="timeLogModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="timeLogModalLabel">Log Your Time</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="timeLogForm" method="POST" action="logTime.php">
-                    <div class="mb-3">
-                        <label for="logType" class="form-label">Action</label>
-                        <select class="form-control" id="logType" name="logType">
-                            <option value="AM Arrival" <?php echo $default_log_type == 'AM Arrival' ? 'selected' : ''; ?>>AM Arrival</option>
-                            <option value="AM Departure" <?php echo $default_log_type == 'AM Departure' ? 'selected' : ''; ?>>AM Departure</option>
-                            <option value="PM Arrival" <?php echo $default_log_type == 'PM Arrival' ? 'selected' : ''; ?>>PM Arrival</option>
-                            <option value="PM Departure" <?php echo $default_log_type == 'PM Departure' ? 'selected' : ''; ?>>PM Departure</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="logTime" class="form-label">Select Time</label>
-                        <div class="input-group">
-                            <input type="time" class="form-control" id="logTime" name="logTime" value="<?php echo $current_time; ?>" required>
-                            <button type="button" class="btn btn-secondary" id="setNowButton">Now</button>
+
+    <!-- Time Log Modal -->
+    <div class="modal fade" id="timeLogModal" tabindex="-1" aria-labelledby="timeLogModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="timeLogModalLabel">Log Your Time</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="timeLogForm" method="POST" action="logTime.php">
+                        <div class="mb-3">
+                            <label for="logType" class="form-label">Action</label>
+                            <select class="form-control" id="logType" name="logType">
+                                <?php foreach ($available_log_types as $log_type): ?>
+                                    <option value="<?php echo $log_type; ?>"><?php echo $log_type; ?></option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
-                    </div>
-                    <button type="submit" class="btn btn-success">Log</button>
-                </form>
+                        <div class="mb-3">
+                            <label for="logTime" class="form-label">Select Time</label>
+                            <div class="input-group">
+                                <input type="time" class="form-control" id="logTime" name="logTime" value="<?php echo $current_time; ?>" required>
+                                <button type="button" class="btn btn-secondary" id="setNowButton">Now</button>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-success">Log</button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
-</div>
+
+    <!-- Already Logged Modal -->
+    <div class="modal fade" id="alreadyLoggedModal" tabindex="-1" aria-labelledby="alreadyLoggedLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="alreadyLoggedLabel">Already Logged</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>You have already logged all required times for today.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
 <script>
 document.getElementById('logTime').addEventListener('input', function(event) {
