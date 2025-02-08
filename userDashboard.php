@@ -10,17 +10,21 @@ if (!isset($_SESSION['user_id'])) {
 // Firebase Database URLs
 $firebase_users_url = "https://dtr-system-a192a-default-rtdb.firebaseio.com/users.json";
 $firebase_logs_url = "https://dtr-system-a192a-default-rtdb.firebaseio.com/user_logs.json";
+$firebase_schedules_url = "https://dtr-system-a192a-default-rtdb.firebaseio.com/user_schedules.json";
 
-// Fetch users and logs from Firebase
+// Fetch users, logs, and schedules from Firebase
 $users_json = file_get_contents($firebase_users_url);
 $logs_json = file_get_contents($firebase_logs_url);
+$schedules_json = file_get_contents($firebase_schedules_url);
 $users_data = json_decode($users_json, true) ?? [];
 $logs_data = json_decode($logs_json, true) ?? [];
+$schedules_data = json_decode($schedules_json, true) ?? [];
 
 // Get current user details
 $user_id = $_SESSION['user_id'];
 $user = $users_data[$user_id] ?? [];
 $user_logs = $logs_data[$user_id] ?? [];
+$user_schedules = $schedules_data[$user_id] ?? [];
 
 // Check if user has changed their password
 $has_changed_password = $user['password_updated'] ?? false;
@@ -50,27 +54,30 @@ if (isset($_POST['change_password'])) {
 
 // Determine default log type based on current logs
 $default_log_type = 'AM Arrival';
+$current_hour = date('H');
+$available_log_types = [];
 if (!empty($user_logs)) {
     $latest_log = end($user_logs);
     if (isset($latest_log['am_arrival']) && !isset($latest_log['am_departure'])) {
         $default_log_type = 'AM Departure';
+        $available_log_types = ['AM Departure'];
     } elseif (isset($latest_log['am_departure']) && !isset($latest_log['pm_arrival'])) {
         $default_log_type = 'PM Arrival';
+        $available_log_types = ['PM Arrival'];
     } elseif (isset($latest_log['pm_arrival']) && !isset($latest_log['pm_departure'])) {
         $default_log_type = 'PM Departure';
+        $available_log_types = ['PM Departure'];
+    } elseif ($current_hour >= 12 && !isset($latest_log['am_arrival'])) {
+        // Mark as absent for AM and only show PM options
+        $default_log_type = 'PM Arrival';
+        $available_log_types = ['PM Arrival', 'PM Departure'];
     }
-}
-
-// Determine available log types based on current logs
-$available_log_types = [];
-if (empty($user_logs) || (isset($latest_log['pm_departure']) && $latest_log['pm_departure'])) {
-    $available_log_types = ['AM Arrival'];
-} elseif (isset($latest_log['am_arrival']) && !isset($latest_log['am_departure'])) {
-    $available_log_types = ['AM Departure'];
-} elseif (isset($latest_log['am_departure']) && !isset($latest_log['pm_arrival'])) {
-    $available_log_types = ['PM Arrival'];
-} elseif (isset($latest_log['pm_arrival']) && !isset($latest_log['pm_departure'])) {
-    $available_log_types = ['PM Departure'];
+} else {
+    if ($current_hour < 12) {
+        $available_log_types = ['AM Arrival'];
+    } else {
+        $available_log_types = ['PM Arrival', 'PM Departure'];
+    }
 }
 
 // Determine if the user has already logged all required times for the day
@@ -101,20 +108,14 @@ foreach ($user_logs as $log_date => $log) {
 // Get current time for default log time
 $current_time = date('H:i');
 
-// Function to calculate total hours rendered in hours and minutes
-function calculate_hours_rendered($log) {
+// Function to calculate total hours rendered in hours and minutes based on schedule
+function calculate_hours_rendered($log, $schedule) {
     $total_seconds = 0;
 
-    if (isset($log['am_arrival']) && isset($log['am_departure'])) {
-        $am_arrival = strtotime($log['am_arrival']);
-        $am_departure = strtotime($log['am_departure']);
-        $total_seconds += ($am_departure - $am_arrival);
-    }
-
-    if (isset($log['pm_arrival']) && isset($log['pm_departure'])) {
-        $pm_arrival = strtotime($log['pm_arrival']);
-        $pm_departure = strtotime($log['pm_departure']);
-        $total_seconds += ($pm_departure - $pm_arrival);
+    if (isset($schedule['am_time_in']) && isset($schedule['pm_time_out'])) {
+        $am_time_in = strtotime($schedule['am_time_in']);
+        $pm_time_out = strtotime($schedule['pm_time_out']);
+        $total_seconds += ($pm_time_out - $am_time_in);
     }
 
     $hours = floor($total_seconds / 3600);
@@ -128,19 +129,14 @@ function convert_to_12hr($time) {
     return date('h:i A', strtotime($time));
 }
 
-// Function to calculate total hours for a given period
-function calculate_total_hours($logs) {
+// Function to calculate total hours for a given period based on schedule
+function calculate_total_hours($logs, $schedules) {
     $total_seconds = 0;
-    foreach ($logs as $log) {
-        if (isset($log['am_arrival']) && isset($log['am_departure'])) {
-            $am_arrival = strtotime($log['am_arrival']);
-            $am_departure = strtotime($log['am_departure']);
-            $total_seconds += ($am_departure - $am_arrival);
-        }
-        if (isset($log['pm_arrival']) && isset($log['pm_departure'])) {
-            $pm_arrival = strtotime($log['pm_arrival']);
-            $pm_departure = strtotime($log['pm_departure']);
-            $total_seconds += ($pm_departure - $pm_arrival);
+    foreach ($logs as $log_date => $log) {
+        if (isset($schedules[$log_date]['am_time_in']) && isset($schedules[$log_date]['pm_time_out'])) {
+            $am_time_in = strtotime($schedules[$log_date]['am_time_in']);
+            $pm_time_out = strtotime($schedules[$log_date]['pm_time_out']);
+            $total_seconds += ($pm_time_out - $am_time_in);
         }
     }
     $hours = floor($total_seconds / 3600);
@@ -148,11 +144,11 @@ function calculate_total_hours($logs) {
     return sprintf('%02d hours and %02d minutes', $hours, $minutes);
 }
 
-// Calculate total hours for the selected month
-$total_hours_month = calculate_total_hours($filtered_logs);
+// Calculate total hours for the selected month based on schedule
+$total_hours_month = calculate_total_hours($filtered_logs, $user_schedules);
 
-// Calculate total hours for the entire time
-$total_hours_all_time = calculate_total_hours($user_logs);
+// Calculate total hours for the entire time based on schedule
+$total_hours_all_time = calculate_total_hours($user_logs, $user_schedules);
 ?>
 
 <!DOCTYPE html>
@@ -162,34 +158,93 @@ $total_hours_all_time = calculate_total_hours($user_logs);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Dashboard - DTR System</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .table th, .table td {
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+        .btn {
+            margin-bottom: 10px;
+        }
+        .table-responsive {
+            overflow-x: auto;
+        }
+        @media (max-width: 768px) {
+            .d-flex {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .btn {
+                width: 100%;
+            }
+            .filters-container {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .table thead {
+                display: none;
+            }
+            .table, .table tbody, .table tr, .table td {
+                display: block;
+                width: 100%;
+            }
+            .table tr {
+                margin-bottom: 15px;
+                border-bottom: 2px solid #ddd;
+                padding-bottom: 10px;
+            }
+            .table td {
+                text-align: right;
+                padding-left: 50%;
+                position: relative;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .table td::before {
+                content: attr(data-label);
+                position: absolute;
+                left: 10px;
+                font-weight: bold;
+                text-align: left;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="container mt-4">
-        <h2 class="mb-3">Welcome, <?php echo htmlspecialchars($_SESSION['user_name']); ?>!</h2>
-
-        <!-- Summary Button -->
-        <div class="mb-4">
+        <h2 class="mb-3 text-center">Welcome, <?php echo htmlspecialchars($_SESSION['user_name']); ?>!</h2>
+        
+        <div class="mb-4 d-flex justify-content-between flex-wrap filters-container">
             <button class="btn btn-info" data-bs-toggle="modal" data-bs-target="#summaryModal">View Summary</button>
+            <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#changePasswordModal">Change Password</button>
         </div>
 
-        <!-- Filters: Month & Search -->
-        <div class="d-flex justify-content-between mb-3">
-            <form method="GET" class="d-flex">
+        <div class="d-flex justify-content-between mb-3 flex-wrap filters-container">
+            <form method="GET" class="d-flex flex-wrap">
                 <label class="me-2 align-self-center"><b>Filter by Month:</b></label>
-                <input type="month" name="month" class="form-control me-2" value="<?php echo $selected_month; ?>">
-                <button type="submit" class="btn btn-primary me-2">Apply</button>
+                <input type="month" name="month" class="form-control me-2 mb-2" value="<?php echo $selected_month; ?>">
+                <button type="submit" class="btn btn-primary me-2 mb-2">Apply</button>
             </form>
-            <form method="GET" class="d-flex">
+            <form method="GET" class="d-flex flex-wrap">
                 <input type="hidden" name="month" value="<?php echo $selected_month; ?>">
-                <input type="date" name="search" class="form-control me-2" value="<?php echo $search_date; ?>">
-                <button type="submit" class="btn btn-primary me-2">Search</button>
+                <input type="date" name="search" class="form-control me-2 mb-2" value="<?php echo $search_date; ?>">
+                <button type="submit" class="btn btn-primary me-2 mb-2">Search</button>
             </form>
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="<?php echo $already_logged_for_day ? '#alreadyLoggedModal' : '#timeLogModal'; ?>">
+            <button class="btn btn-primary mb-2" data-bs-toggle="modal" data-bs-target="<?php echo $already_logged_for_day ? '#alreadyLoggedModal' : '#timeLogModal'; ?>">
                 Log Time
             </button>
         </div>
 
-        <!-- User Logs Table -->
         <div class="table-responsive">
             <table class="table table-hover">
                 <thead class="table-primary">
@@ -206,12 +261,12 @@ $total_hours_all_time = calculate_total_hours($user_logs);
                     <?php if (!empty($filtered_logs)) : ?>
                         <?php foreach ($filtered_logs as $log_date => $log): ?>
                             <tr>
-                                <td><?php echo htmlspecialchars($log_date); ?></td>
-                                <td><?php echo isset($log['am_arrival']) ? convert_to_12hr($log['am_arrival']) : '---'; ?></td>
-                                <td><?php echo isset($log['pm_arrival']) ? convert_to_12hr($log['pm_arrival']) : '---'; ?></td>
-                                <td><?php echo isset($log['am_departure']) ? convert_to_12hr($log['am_departure']) : '---'; ?></td>
-                                <td><?php echo isset($log['pm_departure']) ? convert_to_12hr($log['pm_departure']) : '---'; ?></td>
-                                <td><?php echo calculate_hours_rendered($log); ?></td>
+                                <td data-label="Date"><?php echo htmlspecialchars($log_date); ?></td>
+                                <td data-label="AM Arrival"><?php echo isset($log['am_arrival']) ? convert_to_12hr($log['am_arrival']) : '---'; ?></td>
+                                <td data-label="PM Arrival"><?php echo isset($log['pm_arrival']) ? convert_to_12hr($log['pm_arrival']) : '---'; ?></td>
+                                <td data-label="AM Departure"><?php echo isset($log['am_departure']) ? convert_to_12hr($log['am_departure']) : '---'; ?></td>
+                                <td data-label="PM Departure"><?php echo isset($log['pm_departure']) ? convert_to_12hr($log['pm_departure']) : '---'; ?></td>
+                                <td data-label="Total Hours Rendered"><?php echo calculate_hours_rendered($log, $user_schedules[$log_date] ?? []); ?></td>
                             </tr>
                         <?php endforeach; ?>
                     <?php else : ?>
@@ -223,7 +278,7 @@ $total_hours_all_time = calculate_total_hours($user_logs);
             </table>
         </div>
 
-        <a href="logout.php" class="btn btn-danger">Logout</a>
+        <a href="logout.php" class="btn btn-danger w-100">Logout</a>
     </div>
 
     <!-- Change Password Modal -->
@@ -236,11 +291,21 @@ $total_hours_all_time = calculate_total_hours($user_logs);
                 </div>
                 <div class="modal-body">
                     <form method="POST">
+                        <?php if ($has_changed_password): ?>
+                            <div class="mb-3">
+                                <label for="previous_password" class="form-label">Previous Password:</label>
+                                <input type="password" name="previous_password" id="previous_password" class="form-control" required>
+                            </div>
+                        <?php endif; ?>
                         <div class="mb-3">
                             <label for="new_password" class="form-label">New Password:</label>
                             <input type="password" name="new_password" id="new_password" class="form-control" required>
                         </div>
-                        <button type="submit" name="change_password" class="btn btn-primary">Update Password</button>
+                        <div class="mb-3">
+                            <label for="confirm_password" class="form-label">Confirm Password:</label>
+                            <input type="password" name="confirm_password" id="confirm_password" class="form-control" required>
+                        </div>
+                        <button type="submit" name="change_password" class="btn btn-primary w-100">Update Password</button>
                     </form>
                 </div>
             </div>
@@ -272,7 +337,7 @@ $total_hours_all_time = calculate_total_hours($user_logs);
                                 <button type="button" class="btn btn-secondary" id="setNowButton">Now</button>
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-success">Log</button>
+                        <button type="submit" class="btn btn-success w-100">Log</button>
                     </form>
                 </div>
             </div>
@@ -317,17 +382,6 @@ $total_hours_all_time = calculate_total_hours($user_logs);
     </div>
 
 <script>
-document.getElementById('logTime').addEventListener('input', function(event) {
-    const selectedTime = new Date();
-    const now = new Date();
-    selectedTime.setHours(event.target.value.split(':')[0]);
-    selectedTime.setMinutes(event.target.value.split(':')[1]);
-    if (selectedTime < now) {
-        alert('You cannot select a past time!');
-        event.target.value = '<?php echo $current_time; ?>';
-    }
-});
-
 document.getElementById('setNowButton').addEventListener('click', function() {
     const now = new Date();
     const hours = String(now.getHours()).padStart(2, '0');
