@@ -127,6 +127,32 @@ function calculate_hours_rendered($log) {
 function convert_to_12hr($time) {
     return date('h:i A', strtotime($time));
 }
+
+// Function to calculate total hours for a given period
+function calculate_total_hours($logs) {
+    $total_seconds = 0;
+    foreach ($logs as $log) {
+        if (isset($log['am_arrival']) && isset($log['am_departure'])) {
+            $am_arrival = strtotime($log['am_arrival']);
+            $am_departure = strtotime($log['am_departure']);
+            $total_seconds += ($am_departure - $am_arrival);
+        }
+        if (isset($log['pm_arrival']) && isset($log['pm_departure'])) {
+            $pm_arrival = strtotime($log['pm_arrival']);
+            $pm_departure = strtotime($log['pm_departure']);
+            $total_seconds += ($pm_departure - $pm_arrival);
+        }
+    }
+    $hours = floor($total_seconds / 3600);
+    $minutes = floor(($total_seconds % 3600) / 60);
+    return sprintf('%02d hours and %02d minutes', $hours, $minutes);
+}
+
+// Calculate total hours for the selected month
+$total_hours_month = calculate_total_hours($filtered_logs);
+
+// Calculate total hours for the entire time
+$total_hours_all_time = calculate_total_hours($user_logs);
 ?>
 
 <!DOCTYPE html>
@@ -140,6 +166,11 @@ function convert_to_12hr($time) {
 <body>
     <div class="container mt-4">
         <h2 class="mb-3">Welcome, <?php echo htmlspecialchars($_SESSION['user_name']); ?>!</h2>
+
+        <!-- Summary Button -->
+        <div class="mb-4">
+            <button class="btn btn-info" data-bs-toggle="modal" data-bs-target="#summaryModal">View Summary</button>
+        </div>
 
         <!-- Filters: Month & Search -->
         <div class="d-flex justify-content-between mb-3">
@@ -258,6 +289,25 @@ function convert_to_12hr($time) {
                 </div>
                 <div class="modal-body">
                     <p>You have already logged all required times for today.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Modal -->
+    <div class="modal fade" id="summaryModal" tabindex="-1" aria-labelledby="summaryModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="summaryModalLabel">Summary of Rendered Hours</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Total Hours for <?php echo date('F Y', strtotime($selected_month)); ?>:</strong> <?php echo $total_hours_month; ?></p>
+                    <p><strong>Total Hours for Entire Time:</strong> <?php echo $total_hours_all_time; ?></p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
