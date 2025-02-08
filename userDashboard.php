@@ -48,6 +48,19 @@ if (isset($_POST['change_password'])) {
     exit();
 }
 
+// Determine default log type based on current logs
+$default_log_type = 'AM Arrival';
+if (!empty($user_logs)) {
+    $latest_log = end($user_logs);
+    if (isset($latest_log['am_arrival']) && !isset($latest_log['am_departure'])) {
+        $default_log_type = 'AM Departure';
+    } elseif (isset($latest_log['am_departure']) && !isset($latest_log['pm_arrival'])) {
+        $default_log_type = 'PM Arrival';
+    } elseif (isset($latest_log['pm_arrival']) && !isset($latest_log['pm_departure'])) {
+        $default_log_type = 'PM Departure';
+    }
+}
+
 // Get month filter (default: current month)
 $selected_month = $_GET['month'] ?? date('Y-m');
 
@@ -62,6 +75,36 @@ foreach ($user_logs as $log_date => $log) {
             $filtered_logs[$log_date] = $log;
         }
     }
+}
+
+// Get current time for default log time
+$current_time = date('H:i');
+
+// Function to calculate total hours rendered in hours and minutes
+function calculate_hours_rendered($log) {
+    $total_seconds = 0;
+
+    if (isset($log['am_arrival']) && isset($log['am_departure'])) {
+        $am_arrival = strtotime($log['am_arrival']);
+        $am_departure = strtotime($log['am_departure']);
+        $total_seconds += ($am_departure - $am_arrival);
+    }
+
+    if (isset($log['pm_arrival']) && isset($log['pm_departure'])) {
+        $pm_arrival = strtotime($log['pm_arrival']);
+        $pm_departure = strtotime($log['pm_departure']);
+        $total_seconds += ($pm_departure - $pm_arrival);
+    }
+
+    $hours = floor($total_seconds / 3600);
+    $minutes = floor(($total_seconds % 3600) / 60);
+
+    return sprintf('%02d hours and %02d minutes', $hours, $minutes);
+}
+
+// Function to convert time to 12-hour format
+function convert_to_12hr($time) {
+    return date('h:i A', strtotime($time));
 }
 ?>
 
@@ -105,6 +148,7 @@ foreach ($user_logs as $log_date => $log) {
                         <th>PM Arrival</th>
                         <th>AM Departure</th>
                         <th>PM Departure</th>
+                        <th>Total Hours Rendered</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -112,15 +156,16 @@ foreach ($user_logs as $log_date => $log) {
                         <?php foreach ($filtered_logs as $log_date => $log): ?>
                             <tr>
                                 <td><?php echo htmlspecialchars($log_date); ?></td>
-                                <td><?php echo $log['am_arrival'] ?? '---'; ?></td>
-                                <td><?php echo $log['pm_arrival'] ?? '---'; ?></td>
-                                <td><?php echo $log['am_departure'] ?? '---'; ?></td>
-                                <td><?php echo $log['pm_departure'] ?? '---'; ?></td>
+                                <td><?php echo isset($log['am_arrival']) ? convert_to_12hr($log['am_arrival']) : '---'; ?></td>
+                                <td><?php echo isset($log['pm_arrival']) ? convert_to_12hr($log['pm_arrival']) : '---'; ?></td>
+                                <td><?php echo isset($log['am_departure']) ? convert_to_12hr($log['am_departure']) : '---'; ?></td>
+                                <td><?php echo isset($log['pm_departure']) ? convert_to_12hr($log['pm_departure']) : '---'; ?></td>
+                                <td><?php echo calculate_hours_rendered($log); ?></td>
                             </tr>
                         <?php endforeach; ?>
                     <?php else : ?>
                         <tr>
-                            <td colspan="5" class="text-center">No records found</td>
+                            <td colspan="6" class="text-center">No records found</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
@@ -159,14 +204,22 @@ foreach ($user_logs as $log_date => $log) {
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="timeLogForm" method="POST" action="log_time.php">
+                <form id="timeLogForm" method="POST" action="logTime.php">
                     <div class="mb-3">
                         <label for="logType" class="form-label">Action</label>
-                        <input type="text" class="form-control" id="logType" name="logType" readonly>
+                        <select class="form-control" id="logType" name="logType">
+                            <option value="AM Arrival" <?php echo $default_log_type == 'AM Arrival' ? 'selected' : ''; ?>>AM Arrival</option>
+                            <option value="AM Departure" <?php echo $default_log_type == 'AM Departure' ? 'selected' : ''; ?>>AM Departure</option>
+                            <option value="PM Arrival" <?php echo $default_log_type == 'PM Arrival' ? 'selected' : ''; ?>>PM Arrival</option>
+                            <option value="PM Departure" <?php echo $default_log_type == 'PM Departure' ? 'selected' : ''; ?>>PM Departure</option>
+                        </select>
                     </div>
                     <div class="mb-3">
                         <label for="logTime" class="form-label">Select Time</label>
-                        <input type="datetime-local" class="form-control" id="logTime" name="logTime" required>
+                        <div class="input-group">
+                            <input type="time" class="form-control" id="logTime" name="logTime" value="<?php echo $current_time; ?>" required>
+                            <button type="button" class="btn btn-secondary" id="setNowButton">Now</button>
+                        </div>
                     </div>
                     <button type="submit" class="btn btn-success">Log</button>
                 </form>
@@ -177,14 +230,24 @@ foreach ($user_logs as $log_date => $log) {
 
 <script>
 document.getElementById('logTime').addEventListener('input', function(event) {
-    const selectedTime = new Date(event.target.value);
+    const selectedTime = new Date();
     const now = new Date();
+    selectedTime.setHours(event.target.value.split(':')[0]);
+    selectedTime.setMinutes(event.target.value.split(':')[1]);
     if (selectedTime < now) {
         alert('You cannot select a past time!');
-        event.target.value = '';
+        event.target.value = '<?php echo $current_time; ?>';
     }
 });
+
+document.getElementById('setNowButton').addEventListener('click', function() {
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    document.getElementById('logTime').value = `${hours}:${minutes}`;
+});
 </script>
+
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
