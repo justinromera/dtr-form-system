@@ -177,24 +177,66 @@ $total_hours_all_time = calculate_total_hours($user_logs);
         }
         .table th, .table td {
             vertical-align: middle;
+            white-space: nowrap;
         }
         .btn {
             margin-bottom: 10px;
+        }
+        .table-responsive {
+            overflow-x: auto;
+        }
+        @media (max-width: 768px) {
+            .d-flex {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .btn {
+                width: 100%;
+            }
+            .filters-container {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .table thead {
+                display: none;
+            }
+            .table, .table tbody, .table tr, .table td {
+                display: block;
+                width: 100%;
+            }
+            .table tr {
+                margin-bottom: 15px;
+                border-bottom: 2px solid #ddd;
+                padding-bottom: 10px;
+            }
+            .table td {
+                text-align: right;
+                padding-left: 50%;
+                position: relative;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .table td::before {
+                content: attr(data-label);
+                position: absolute;
+                left: 10px;
+                font-weight: bold;
+                text-align: left;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container mt-4">
         <h2 class="mb-3 text-center">Welcome, <?php echo htmlspecialchars($_SESSION['user_name']); ?>!</h2>
-
-        <!-- Summary Button -->
-        <div class="mb-4 d-flex justify-content-between flex-wrap">
+        
+        <div class="mb-4 d-flex justify-content-between flex-wrap filters-container">
             <button class="btn btn-info" data-bs-toggle="modal" data-bs-target="#summaryModal">View Summary</button>
             <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#changePasswordModal">Change Password</button>
         </div>
 
-        <!-- Filters: Month & Search -->
-        <div class="d-flex justify-content-between mb-3 flex-wrap">
+        <div class="d-flex justify-content-between mb-3 flex-wrap filters-container">
             <form method="GET" class="d-flex flex-wrap">
                 <label class="me-2 align-self-center"><b>Filter by Month:</b></label>
                 <input type="month" name="month" class="form-control me-2 mb-2" value="<?php echo $selected_month; ?>">
@@ -210,7 +252,6 @@ $total_hours_all_time = calculate_total_hours($user_logs);
             </button>
         </div>
 
-        <!-- User Logs Table -->
         <div class="table-responsive">
             <table class="table table-hover">
                 <thead class="table-primary">
@@ -227,12 +268,12 @@ $total_hours_all_time = calculate_total_hours($user_logs);
                     <?php if (!empty($filtered_logs)) : ?>
                         <?php foreach ($filtered_logs as $log_date => $log): ?>
                             <tr>
-                                <td><?php echo htmlspecialchars($log_date); ?></td>
-                                <td><?php echo isset($log['am_arrival']) ? convert_to_12hr($log['am_arrival']) : '---'; ?></td>
-                                <td><?php echo isset($log['pm_arrival']) ? convert_to_12hr($log['pm_arrival']) : '---'; ?></td>
-                                <td><?php echo isset($log['am_departure']) ? convert_to_12hr($log['am_departure']) : '---'; ?></td>
-                                <td><?php echo isset($log['pm_departure']) ? convert_to_12hr($log['pm_departure']) : '---'; ?></td>
-                                <td><?php echo calculate_hours_rendered($log); ?></td>
+                                <td data-label="Date"><?php echo htmlspecialchars($log_date); ?></td>
+                                <td data-label="AM Arrival"><?php echo isset($log['am_arrival']) ? convert_to_12hr($log['am_arrival']) : '---'; ?></td>
+                                <td data-label="PM Arrival"><?php echo isset($log['pm_arrival']) ? convert_to_12hr($log['pm_arrival']) : '---'; ?></td>
+                                <td data-label="AM Departure"><?php echo isset($log['am_departure']) ? convert_to_12hr($log['am_departure']) : '---'; ?></td>
+                                <td data-label="PM Departure"><?php echo isset($log['pm_departure']) ? convert_to_12hr($log['pm_departure']) : '---'; ?></td>
+                                <td data-label="Total Hours Rendered"><?php echo calculate_hours_rendered($log); ?></td>
                             </tr>
                         <?php endforeach; ?>
                     <?php else : ?>
