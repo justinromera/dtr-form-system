@@ -28,6 +28,19 @@ function calculate_hours($log) {
     return '---';
 }
 
+// Function to calculate total hours for all logs of a user
+function calculate_total_hours($logs) {
+    $total_hours = 0;
+    foreach ($logs as $log) {
+        if (isset($log['am_arrival'], $log['am_departure'], $log['pm_arrival'], $log['pm_departure'])) {
+            $morning_hours = (strtotime($log['am_departure']) - strtotime($log['am_arrival'])) / 3600;
+            $afternoon_hours = (strtotime($log['pm_departure']) - strtotime($log['pm_arrival'])) / 3600;
+            $total_hours += $morning_hours + $afternoon_hours;
+        }
+    }
+    return number_format($total_hours, 2) . ' hrs';
+}
+
 // Handle Log Edit
 if (isset($_POST['edit_log'])) {
     $edit_date = $_POST['edit_date'];
@@ -137,6 +150,26 @@ if (isset($_POST['delete_log'])) {
                             <td colspan="7" class="text-center">No logs available for this user</td>
                         </tr>
                     <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Total Hours Table -->
+        <div class="table-responsive mt-4">
+            <table class="table table-bordered">
+                <thead class="table-secondary">
+                    <tr>
+                        <th>User</th>
+                        <th>Total Hours</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($users_data as $user_id => $user): ?>
+                        <tr>
+                            <td><?php echo htmlspecialchars($user['name'] ?? 'Unknown User'); ?></td>
+                            <td><?php echo calculate_total_hours($logs_data[$user_id] ?? []); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
