@@ -21,24 +21,29 @@ function format_time($time) {
 // Function to calculate total rendered hours
 function calculate_hours($log) {
     if (isset($log['am_arrival'], $log['am_departure'], $log['pm_arrival'], $log['pm_departure'])) {
-        $morning_hours = (strtotime($log['am_departure']) - strtotime($log['am_arrival'])) / 3600;
-        $afternoon_hours = (strtotime($log['pm_departure']) - strtotime($log['pm_arrival'])) / 3600;
-        return number_format($morning_hours + $afternoon_hours, 2) . ' hrs';
+        $morning_seconds = strtotime($log['am_departure']) - strtotime($log['am_arrival']);
+        $afternoon_seconds = strtotime($log['pm_departure']) - strtotime($log['pm_arrival']);
+        $total_seconds = $morning_seconds + $afternoon_seconds;
+        $hours = floor($total_seconds / 3600);
+        $minutes = floor(($total_seconds % 3600) / 60);
+        return "{$hours} hour " . ($minutes > 0 ? "{$minutes} minutes" : "");
     }
     return '---';
 }
 
 // Function to calculate total hours for all logs of a user
 function calculate_total_hours($logs) {
-    $total_hours = 0;
+    $total_seconds = 0;
     foreach ($logs as $log) {
         if (isset($log['am_arrival'], $log['am_departure'], $log['pm_arrival'], $log['pm_departure'])) {
-            $morning_hours = (strtotime($log['am_departure']) - strtotime($log['am_arrival'])) / 3600;
-            $afternoon_hours = (strtotime($log['pm_departure']) - strtotime($log['pm_arrival'])) / 3600;
-            $total_hours += $morning_hours + $afternoon_hours;
+            $morning_seconds = strtotime($log['am_departure']) - strtotime($log['am_arrival']);
+            $afternoon_seconds = strtotime($log['pm_departure']) - strtotime($log['pm_arrival']);
+            $total_seconds += $morning_seconds + $afternoon_seconds;
         }
     }
-    return number_format($total_hours, 2) . ' hrs';
+    $hours = floor($total_seconds / 3600);
+    $minutes = floor(($total_seconds % 3600) / 60);
+    return "{$hours} hour " . ($minutes > 0 ? "{$minutes} minutes" : "");
 }
 
 // Handle Log Edit
@@ -82,6 +87,29 @@ if (isset($_POST['delete_log'])) {
     file_get_contents("{$firebase_url}user_logs/{$selected_user_id}/{$delete_date}.json", false, $context);
 
     echo "<script>alert('Log deleted successfully!'); window.location.href='admin.php?user={$selected_user_id}';</script>";
+    exit();
+}
+
+// Handle User Deletion
+if (isset($_POST['delete_user'])) {
+    $delete_user_id = $_POST['delete_user_id'];
+    
+    // Remove user entry
+    unset($users_data[$delete_user_id]);
+    unset($logs_data[$delete_user_id]);
+
+    // Update Firebase (set entry to null to delete)
+    $options = [
+        "http" => [
+            "header"  => "Content-type: application/json",
+            "method"  => "DELETE"
+        ]
+    ];
+    $context = stream_context_create($options);
+    file_get_contents("{$firebase_url}users/{$delete_user_id}.json", false, $context);
+    file_get_contents("{$firebase_url}user_logs/{$delete_user_id}.json", false, $context);
+
+    echo "<script>alert('User deleted successfully!'); window.location.href='admin.php';</script>";
     exit();
 }
 
@@ -176,6 +204,8 @@ if (isset($_POST['delete_log'])) {
 
         <!-- Add User Button -->
         <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addUserModal">Add User</button>
+        <!-- Remove User Button -->
+        <button class="btn btn-danger mb-3" data-bs-toggle="modal" data-bs-target="#removeUserModal">Remove User</button>
     </div>
 
     <!-- Add User Modal -->
@@ -201,6 +231,62 @@ if (isset($_POST['delete_log'])) {
                             <input type="text" name="phone" id="phone" class="form-control" required>
                         </div>
                         <button type="submit" name="submit" class="btn btn-primary">Add User</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Remove User Modal -->
+    <div class="modal fade" id="removeUserModal" tabindex="-1" aria-labelledby="removeUserModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="removeUserModalLabel">Remove User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="delete_user_id" class="form-label">Select User to Remove:</label>
+                            <select name="delete_user_id" id="delete_user_id" class="form-select" required>
+                                <?php foreach ($users_data as $user_id => $user): ?>
+                                    <option value="<?php echo $user_id; ?>"><?php echo htmlspecialchars($user['name'] ?? 'Unknown User'); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <button type="submit" name="delete_user" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this user?')">Remove User</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Log Modal -->
+    <div class="modal fade" id="editLogModal" tabindex="-1" aria-labelledby="editLogModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editLogModalLabel">Edit Log</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST">
+                        <input type="hidden" name="edit_date" id="edit_date">
+                        <div class="mb-3">
+                            <label for="log_type" class="form-label">Log Type:</label>
+                            <select name="log_type" id="log_type" class="form-select" required>
+                                <option value="am_arrival">AM Arrival</option>
+                                <option value="am_departure">AM Departure</option>
+                                <option value="pm_arrival">PM Arrival</option>
+                                <option value="pm_departure">PM Departure</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="new_time" class="form-label">New Time:</label>
+                            <input type="time" name="new_time" id="new_time" class="form-control" required>
+                        </div>
+                        <button type="submit" name="edit_log" class="btn btn-primary">Save changes</button>
                     </form>
                 </div>
             </div>
