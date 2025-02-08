@@ -10,17 +10,21 @@ if (!isset($_SESSION['user_id'])) {
 // Firebase Database URLs
 $firebase_users_url = "https://dtr-system-a192a-default-rtdb.firebaseio.com/users.json";
 $firebase_logs_url = "https://dtr-system-a192a-default-rtdb.firebaseio.com/user_logs.json";
+$firebase_schedules_url = "https://dtr-system-a192a-default-rtdb.firebaseio.com/user_schedules.json";
 
-// Fetch users and logs from Firebase
+// Fetch users, logs, and schedules from Firebase
 $users_json = file_get_contents($firebase_users_url);
 $logs_json = file_get_contents($firebase_logs_url);
+$schedules_json = file_get_contents($firebase_schedules_url);
 $users_data = json_decode($users_json, true) ?? [];
 $logs_data = json_decode($logs_json, true) ?? [];
+$schedules_data = json_decode($schedules_json, true) ?? [];
 
 // Get current user details
 $user_id = $_SESSION['user_id'];
 $user = $users_data[$user_id] ?? [];
 $user_logs = $logs_data[$user_id] ?? [];
+$user_schedules = $schedules_data[$user_id] ?? [];
 
 // Check if user has changed their password
 $has_changed_password = $user['password_updated'] ?? false;
@@ -104,20 +108,14 @@ foreach ($user_logs as $log_date => $log) {
 // Get current time for default log time
 $current_time = date('H:i');
 
-// Function to calculate total hours rendered in hours and minutes
-function calculate_hours_rendered($log) {
+// Function to calculate total hours rendered in hours and minutes based on schedule
+function calculate_hours_rendered($log, $schedule) {
     $total_seconds = 0;
 
-    if (isset($log['am_arrival']) && isset($log['am_departure'])) {
-        $am_arrival = strtotime($log['am_arrival']);
-        $am_departure = strtotime($log['am_departure']);
-        $total_seconds += ($am_departure - $am_arrival);
-    }
-
-    if (isset($log['pm_arrival']) && isset($log['pm_departure'])) {
-        $pm_arrival = strtotime($log['pm_arrival']);
-        $pm_departure = strtotime($log['pm_departure']);
-        $total_seconds += ($pm_departure - $pm_arrival);
+    if (isset($schedule['am_time_in']) && isset($schedule['pm_time_out'])) {
+        $am_time_in = strtotime($schedule['am_time_in']);
+        $pm_time_out = strtotime($schedule['pm_time_out']);
+        $total_seconds += ($pm_time_out - $am_time_in);
     }
 
     $hours = floor($total_seconds / 3600);
@@ -131,19 +129,14 @@ function convert_to_12hr($time) {
     return date('h:i A', strtotime($time));
 }
 
-// Function to calculate total hours for a given period
-function calculate_total_hours($logs) {
+// Function to calculate total hours for a given period based on schedule
+function calculate_total_hours($logs, $schedules) {
     $total_seconds = 0;
-    foreach ($logs as $log) {
-        if (isset($log['am_arrival']) && isset($log['am_departure'])) {
-            $am_arrival = strtotime($log['am_arrival']);
-            $am_departure = strtotime($log['am_departure']);
-            $total_seconds += ($am_departure - $am_arrival);
-        }
-        if (isset($log['pm_arrival']) && isset($log['pm_departure'])) {
-            $pm_arrival = strtotime($log['pm_arrival']);
-            $pm_departure = strtotime($log['pm_departure']);
-            $total_seconds += ($pm_departure - $pm_arrival);
+    foreach ($logs as $log_date => $log) {
+        if (isset($schedules[$log_date]['am_time_in']) && isset($schedules[$log_date]['pm_time_out'])) {
+            $am_time_in = strtotime($schedules[$log_date]['am_time_in']);
+            $pm_time_out = strtotime($schedules[$log_date]['pm_time_out']);
+            $total_seconds += ($pm_time_out - $am_time_in);
         }
     }
     $hours = floor($total_seconds / 3600);
@@ -151,11 +144,11 @@ function calculate_total_hours($logs) {
     return sprintf('%02d hours and %02d minutes', $hours, $minutes);
 }
 
-// Calculate total hours for the selected month
-$total_hours_month = calculate_total_hours($filtered_logs);
+// Calculate total hours for the selected month based on schedule
+$total_hours_month = calculate_total_hours($filtered_logs, $user_schedules);
 
-// Calculate total hours for the entire time
-$total_hours_all_time = calculate_total_hours($user_logs);
+// Calculate total hours for the entire time based on schedule
+$total_hours_all_time = calculate_total_hours($user_logs, $user_schedules);
 ?>
 
 <!DOCTYPE html>
@@ -273,7 +266,7 @@ $total_hours_all_time = calculate_total_hours($user_logs);
                                 <td data-label="PM Arrival"><?php echo isset($log['pm_arrival']) ? convert_to_12hr($log['pm_arrival']) : '---'; ?></td>
                                 <td data-label="AM Departure"><?php echo isset($log['am_departure']) ? convert_to_12hr($log['am_departure']) : '---'; ?></td>
                                 <td data-label="PM Departure"><?php echo isset($log['pm_departure']) ? convert_to_12hr($log['pm_departure']) : '---'; ?></td>
-                                <td data-label="Total Hours Rendered"><?php echo calculate_hours_rendered($log); ?></td>
+                                <td data-label="Total Hours Rendered"><?php echo calculate_hours_rendered($log, $user_schedules[$log_date] ?? []); ?></td>
                             </tr>
                         <?php endforeach; ?>
                     <?php else : ?>
