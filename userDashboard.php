@@ -165,30 +165,47 @@ $total_hours_all_time = calculate_total_hours($user_logs);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Dashboard - DTR System</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .table th, .table td {
+            vertical-align: middle;
+        }
+        .btn {
+            margin-bottom: 10px;
+        }
+    </style>
 </head>
 <body>
     <div class="container mt-4">
-        <h2 class="mb-3">Welcome, <?php echo htmlspecialchars($_SESSION['user_name']); ?>!</h2>
+        <h2 class="mb-3 text-center">Welcome, <?php echo htmlspecialchars($_SESSION['user_name']); ?>!</h2>
 
         <!-- Summary Button -->
-        <div class="mb-4 d-flex justify-content-between">
+        <div class="mb-4 d-flex justify-content-between flex-wrap">
             <button class="btn btn-info" data-bs-toggle="modal" data-bs-target="#summaryModal">View Summary</button>
             <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#changePasswordModal">Change Password</button>
         </div>
 
         <!-- Filters: Month & Search -->
-        <div class="d-flex justify-content-between mb-3">
-            <form method="GET" class="d-flex">
+        <div class="d-flex justify-content-between mb-3 flex-wrap">
+            <form method="GET" class="d-flex flex-wrap">
                 <label class="me-2 align-self-center"><b>Filter by Month:</b></label>
-                <input type="month" name="month" class="form-control me-2" value="<?php echo $selected_month; ?>">
-                <button type="submit" class="btn btn-primary me-2">Apply</button>
+                <input type="month" name="month" class="form-control me-2 mb-2" value="<?php echo $selected_month; ?>">
+                <button type="submit" class="btn btn-primary me-2 mb-2">Apply</button>
             </form>
-            <form method="GET" class="d-flex">
+            <form method="GET" class="d-flex flex-wrap">
                 <input type="hidden" name="month" value="<?php echo $selected_month; ?>">
-                <input type="date" name="search" class="form-control me-2" value="<?php echo $search_date; ?>">
-                <button type="submit" class="btn btn-primary me-2">Search</button>
+                <input type="date" name="search" class="form-control me-2 mb-2" value="<?php echo $search_date; ?>">
+                <button type="submit" class="btn btn-primary me-2 mb-2">Search</button>
             </form>
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="<?php echo $already_logged_for_day ? '#alreadyLoggedModal' : '#timeLogModal'; ?>">
+            <button class="btn btn-primary mb-2" data-bs-toggle="modal" data-bs-target="<?php echo $already_logged_for_day ? '#alreadyLoggedModal' : '#timeLogModal'; ?>">
                 Log Time
             </button>
         </div>
@@ -227,7 +244,7 @@ $total_hours_all_time = calculate_total_hours($user_logs);
             </table>
         </div>
 
-        <a href="logout.php" class="btn btn-danger">Logout</a>
+        <a href="logout.php" class="btn btn-danger w-100">Logout</a>
     </div>
 
     <!-- Change Password Modal -->
@@ -254,7 +271,7 @@ $total_hours_all_time = calculate_total_hours($user_logs);
                             <label for="confirm_password" class="form-label">Confirm Password:</label>
                             <input type="password" name="confirm_password" id="confirm_password" class="form-control" required>
                         </div>
-                        <button type="submit" name="change_password" class="btn btn-primary">Update Password</button>
+                        <button type="submit" name="change_password" class="btn btn-primary w-100">Update Password</button>
                     </form>
                 </div>
             </div>
@@ -286,7 +303,7 @@ $total_hours_all_time = calculate_total_hours($user_logs);
                                 <button type="button" class="btn btn-secondary" id="setNowButton">Now</button>
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-success">Log</button>
+                        <button type="submit" class="btn btn-success w-100">Log</button>
                     </form>
                 </div>
             </div>
