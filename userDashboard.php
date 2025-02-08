@@ -50,27 +50,30 @@ if (isset($_POST['change_password'])) {
 
 // Determine default log type based on current logs
 $default_log_type = 'AM Arrival';
+$current_hour = date('H');
+$available_log_types = [];
 if (!empty($user_logs)) {
     $latest_log = end($user_logs);
     if (isset($latest_log['am_arrival']) && !isset($latest_log['am_departure'])) {
         $default_log_type = 'AM Departure';
+        $available_log_types = ['AM Departure'];
     } elseif (isset($latest_log['am_departure']) && !isset($latest_log['pm_arrival'])) {
         $default_log_type = 'PM Arrival';
+        $available_log_types = ['PM Arrival'];
     } elseif (isset($latest_log['pm_arrival']) && !isset($latest_log['pm_departure'])) {
         $default_log_type = 'PM Departure';
+        $available_log_types = ['PM Departure'];
+    } elseif ($current_hour >= 12 && !isset($latest_log['am_arrival'])) {
+        // Mark as absent for AM and only show PM options
+        $default_log_type = 'PM Arrival';
+        $available_log_types = ['PM Arrival', 'PM Departure'];
     }
-}
-
-// Determine available log types based on current logs
-$available_log_types = [];
-if (empty($user_logs) || (isset($latest_log['pm_departure']) && $latest_log['pm_departure'])) {
-    $available_log_types = ['AM Arrival'];
-} elseif (isset($latest_log['am_arrival']) && !isset($latest_log['am_departure'])) {
-    $available_log_types = ['AM Departure'];
-} elseif (isset($latest_log['am_departure']) && !isset($latest_log['pm_arrival'])) {
-    $available_log_types = ['PM Arrival'];
-} elseif (isset($latest_log['pm_arrival']) && !isset($latest_log['pm_departure'])) {
-    $available_log_types = ['PM Departure'];
+} else {
+    if ($current_hour < 12) {
+        $available_log_types = ['AM Arrival'];
+    } else {
+        $available_log_types = ['PM Arrival', 'PM Departure'];
+    }
 }
 
 // Determine if the user has already logged all required times for the day
@@ -168,8 +171,9 @@ $total_hours_all_time = calculate_total_hours($user_logs);
         <h2 class="mb-3">Welcome, <?php echo htmlspecialchars($_SESSION['user_name']); ?>!</h2>
 
         <!-- Summary Button -->
-        <div class="mb-4">
+        <div class="mb-4 d-flex justify-content-between">
             <button class="btn btn-info" data-bs-toggle="modal" data-bs-target="#summaryModal">View Summary</button>
+            <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#changePasswordModal">Change Password</button>
         </div>
 
         <!-- Filters: Month & Search -->
@@ -236,9 +240,19 @@ $total_hours_all_time = calculate_total_hours($user_logs);
                 </div>
                 <div class="modal-body">
                     <form method="POST">
+                        <?php if ($has_changed_password): ?>
+                            <div class="mb-3">
+                                <label for="previous_password" class="form-label">Previous Password:</label>
+                                <input type="password" name="previous_password" id="previous_password" class="form-control" required>
+                            </div>
+                        <?php endif; ?>
                         <div class="mb-3">
                             <label for="new_password" class="form-label">New Password:</label>
                             <input type="password" name="new_password" id="new_password" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirm_password" class="form-label">Confirm Password:</label>
+                            <input type="password" name="confirm_password" id="confirm_password" class="form-control" required>
                         </div>
                         <button type="submit" name="change_password" class="btn btn-primary">Update Password</button>
                     </form>
@@ -317,17 +331,6 @@ $total_hours_all_time = calculate_total_hours($user_logs);
     </div>
 
 <script>
-document.getElementById('logTime').addEventListener('input', function(event) {
-    const selectedTime = new Date();
-    const now = new Date();
-    selectedTime.setHours(event.target.value.split(':')[0]);
-    selectedTime.setMinutes(event.target.value.split(':')[1]);
-    if (selectedTime < now) {
-        alert('You cannot select a past time!');
-        event.target.value = '<?php echo $current_time; ?>';
-    }
-});
-
 document.getElementById('setNowButton').addEventListener('click', function() {
     const now = new Date();
     const hours = String(now.getHours()).padStart(2, '0');
