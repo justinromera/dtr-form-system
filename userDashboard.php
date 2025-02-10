@@ -162,11 +162,22 @@ $total_hours_all_time = calculate_total_hours($user_logs, $user_schedules);
         body {
             background-color: #f8f9fa;
         }
+        .navbar {
+            background-color: #198D5E;
+            color: white;
+        }
+        .navbar-brand {
+            font-weight: bold;
+            color: white;
+        }
+        .navbar-nav .nav-link {
+            color: white;
+        }
+        .navbar-nav .nav-link:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
         .container {
-            background-color: #ffffff;
             padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
         .table th, .table td {
             vertical-align: middle;
@@ -218,29 +229,56 @@ $total_hours_all_time = calculate_total_hours($user_logs, $user_schedules);
                 text-align: left;
             }
         }
+        .input-button {
+            display: flex;
+            flex-direction: row;
+        }
     </style>
 </head>
 <body>
+    <!-- Navigation Header -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">DTR System</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <!-- <li class="nav-item">
+                        <span class="nav-link">Welcome, <?php echo htmlspecialchars($_SESSION['user_name']); ?>!</span>
+                    </li> -->
+                    <li class="nav-item">
+                        <a class="nav-link btn btn-warning text-white" href="#changePasswordModal" data-bs-toggle="modal">Change Password</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link btn btn-danger text-white" href="logout.php">Logout</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
     <div class="container mt-4">
-        <h2 class="mb-3 text-center">Welcome, <?php echo htmlspecialchars($_SESSION['user_name']); ?>!</h2>
-        
         <div class="mb-4 d-flex justify-content-between flex-wrap filters-container">
-            <button class="btn btn-info" data-bs-toggle="modal" data-bs-target="#summaryModal">View Summary</button>
-            <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#changePasswordModal">Change Password</button>
+            <button class="btn" id="" data-bs-toggle="modal" data-bs-target="#summaryModal">View Summary</button>
         </div>
 
         <div class="d-flex justify-content-between mb-3 flex-wrap filters-container">
             <form method="GET" class="d-flex flex-wrap">
-                <label class="me-2 align-self-center"><b>Filter by Month:</b></label>
-                <input type="month" name="month" class="form-control me-2 mb-2" value="<?php echo $selected_month; ?>">
-                <button type="submit" class="btn btn-primary me-2 mb-2">Apply</button>
+                <div class="input-button">
+                    <input type="month" name="month" class="form-control me-2 mb-2" value="<?php echo $selected_month; ?>">
+                    <button type="submit" class="btn  me-2 mb-2">Apply</button>
+                </div>
             </form>
             <form method="GET" class="d-flex flex-wrap">
                 <input type="hidden" name="month" value="<?php echo $selected_month; ?>">
-                <input type="date" name="search" class="form-control me-2 mb-2" value="<?php echo $search_date; ?>">
-                <button type="submit" class="btn btn-primary me-2 mb-2">Search</button>
+                <div class="input-button">  
+                    <input type="date" name="search" class="form-control me-2 mb-2" value="<?php echo $search_date; ?>">
+                    <button type="submit" class="btn  me-2 mb-2">Search</button>
+                </div>
             </form>
-            <button class="btn btn-primary mb-2" data-bs-toggle="modal" data-bs-target="<?php echo $already_logged_for_day ? '#alreadyLoggedModal' : '#timeLogModal'; ?>">
+            <button class="btn mb-2" data-bs-toggle="modal" data-bs-target="<?php echo $already_logged_for_day ? '#alreadyLoggedModal' : '#timeLogModal'; ?>">
                 Log Time
             </button>
         </div>
@@ -277,8 +315,6 @@ $total_hours_all_time = calculate_total_hours($user_logs, $user_schedules);
                 </tbody>
             </table>
         </div>
-
-        <a href="logout.php" class="btn btn-danger w-100">Logout</a>
     </div>
 
     <!-- Change Password Modal -->
