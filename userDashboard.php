@@ -119,6 +119,29 @@ $total_hours_month = calculate_total_hours($filtered_logs);
 
 // Calculate total hours for the entire time based on logs
 $total_hours_all_time = calculate_total_hours($user_logs);
+
+// Determine if the user has already logged all required times for the day
+$today_date = date('Y-m-d');
+$already_logged_for_day = isset($user_logs[$today_date]) && 
+                          isset($user_logs[$today_date]['am_arrival']) && 
+                          isset($user_logs[$today_date]['am_departure']) && 
+                          isset($user_logs[$today_date]['pm_arrival']) && 
+                          isset($user_logs[$today_date]['pm_departure']);
+
+// Determine available log types based on existing logs for the day
+$available_log_types = [];
+if (!isset($user_logs[$today_date]['am_arrival'])) {
+    $available_log_types[] = 'AM Arrival';
+}
+if (!isset($user_logs[$today_date]['am_departure'])) {
+    $available_log_types[] = 'AM Departure';
+}
+if (!isset($user_logs[$today_date]['pm_arrival'])) {
+    $available_log_types[] = 'PM Arrival';
+}
+if (!isset($user_logs[$today_date]['pm_departure'])) {
+    $available_log_types[] = 'PM Departure';
+}
 ?>
 
 <!DOCTYPE html>
@@ -332,7 +355,7 @@ $total_hours_all_time = calculate_total_hours($user_logs);
                             <label for="logType" class="form-label">Action</label>
                             <select class="form-control" id="logType" name="logType">
                                 <?php foreach ($available_log_types as $log_type): ?>
-                                    <option value="<?php echo $log_type; ?>"><?php echo $log_type; ?></option>
+                                    <option value="<?php echo strtolower(str_replace(' ', '_', $log_type)); ?>"><?php echo $log_type; ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
