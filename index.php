@@ -9,6 +9,7 @@ $users_json = file_get_contents($firebase_url);
 $users_data = json_decode($users_json, true) ?? [];
 
 // Handle login
+$loginError = "";
 if (isset($_POST['login'])) {
     $email = $_POST['email'] ?? '';
     $password = $_POST['password'] ?? '';
@@ -27,9 +28,8 @@ if (isset($_POST['login'])) {
         }
     }
 
-    echo "<script>alert('Invalid email or password!'); window.location.href='user.php';</script>";
+    $loginError = "Invalid email or password!";
 }
-
 ?>
 
 <!DOCTYPE html>
@@ -38,26 +38,53 @@ if (isset($_POST['login'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Login - DTR System</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
-    <div class="container mt-5">
-        <h2 class="mb-4 text-center">User Login - DTR System</h2>
-        <div class="row justify-content-center">
-            <div class="col-md-6">
-                <form action="" method="POST">
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email:</label>
-                        <input type="email" name="email" id="email" class="form-control" required>
+    <div class="main-container">
+        <div class="image-section"></div>
+
+        <div class="login-container">
+            <div class="login-header">
+                <img src="../img/bfp2.jpg" alt="DTR System Logo">
+                <h1>DTR System</h1>
+                <p>Welcome! Please log in to your account.</p>
+            </div>
+            <form action="" method="POST" id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <div class="input-group">
+                        <input type="email" id="email" name="email" placeholder="Email" required>
                     </div>
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Password:</label>
-                        <input type="password" name="password" id="password" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <div class="input-group">
+                        <input type="password" id="password" name="password" placeholder="Password" required>
+                        <i class="fas fa-eye eye-icon" onclick="togglePasswordVisibility('password')"></i>
                     </div>
-                    <button type="submit" name="login" class="btn btn-primary w-100">Login</button>
-                </form>
+                </div>
+                <div class="form-group">
+                    <button type="submit" name="login">Login</button>
+                </div>
+                <p style="color: red;" class="error-message"><?php echo htmlspecialchars($loginError); ?></p>
+            </form>
+            <div class="login-footer">
+                <p>Don't have an account? <a href="signup.php">Signup here</a></p>
+                <p><a href="../forgot_password.php" id="forgotPasswordLink">Forgot your password?</a></p>
             </div>
         </div>
     </div>
+
+    <script>
+        function togglePasswordVisibility(inputId) {
+            const input = document.getElementById(inputId);
+            const type = input.type === 'password' ? 'text' : 'password';
+            input.type = type;
+        }
+    </script>
 </body>
 </html>
+
