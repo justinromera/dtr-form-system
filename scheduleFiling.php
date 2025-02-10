@@ -15,6 +15,13 @@ $firebase_schedules_url = "https://dtr-system-a192a-default-rtdb.firebaseio.com/
 $users_json = file_get_contents($firebase_users_url);
 $users_data = json_decode($users_json, true) ?? [];
 
+// Get selected user ID from dropdown
+$selected_user_id = $_GET['user'] ?? (key($users_data) ?? '');
+
+// Fetch schedules for the selected user
+$schedules_json = file_get_contents($firebase_schedules_url);
+$schedules_data = json_decode($schedules_json, true) ?? [];
+$user_schedules = $schedules_data[$selected_user_id] ?? [];
 
 // Handle schedule filing
 if (isset($_POST['submit_schedule'])) {
@@ -49,7 +56,7 @@ if (isset($_POST['submit_schedule'])) {
         file_get_contents("https://dtr-system-a192a-default-rtdb.firebaseio.com/user_schedules/$selected_user_id/$date.json", false, $context);
     }
 
-    echo "<script>alert('Schedule filed successfully!'); window.location.href='scheduleFiling.php';</script>";
+    echo "<script>alert('Schedule filed successfully!'); window.location.href='scheduleFiling.php?user=$selected_user_id';</script>";
     exit();
 }
 ?>
@@ -83,16 +90,19 @@ if (isset($_POST['submit_schedule'])) {
     <div class="container mt-4">
         <h2 class="mb-3 text-center">Schedule Filing</h2>
 
-        <form method="POST" id="scheduleForm">
-            <div class="mb-3">
-                <label for="user" class="form-label">Select User:</label>
-                <select name="user" id="user" class="form-select" required>
-                    <?php foreach ($users_data as $user_id => $user): ?>
-                        <option value="<?php echo $user_id; ?>"><?php echo htmlspecialchars($user['name'] ?? 'Unknown User'); ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+        <form method="GET" class="mb-3">
+            <label for="user" class="form-label">Select User:</label>
+            <select name="user" id="user" class="form-select" onchange="this.form.submit()">
+                <?php foreach ($users_data as $user_id => $user): ?>
+                    <option value="<?php echo $user_id; ?>" <?php echo ($selected_user_id == $user_id) ? 'selected' : ''; ?>>
+                        <?php echo htmlspecialchars($user['name'] ?? 'Unknown User'); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </form>
 
+        <form method="POST" id="scheduleForm">
+            <input type="hidden" name="user" value="<?php echo $selected_user_id; ?>">
             <div class="table-responsive">
                 <table class="table table-bordered" id="scheduleTable">
                     <thead class="table-primary">
@@ -108,11 +118,13 @@ if (isset($_POST['submit_schedule'])) {
                         $start_date = strtotime('monday this week');
                         for ($i = 0; $i < 7; $i++): 
                             $date = date('Y-m-d', strtotime("+$i days", $start_date));
+                            $am_time_in = $user_schedules[$date]['am_time_in'] ?? '';
+                            $pm_time_out = $user_schedules[$date]['pm_time_out'] ?? '';
                         ?>
                             <tr>
                                 <td><input type="date" name="schedule[<?php echo $date; ?>][date]" class="form-control" value="<?php echo $date; ?>" required></td>
-                                <td><input type="time" name="schedule[<?php echo $date; ?>][am_time_in]" class="form-control" required></td>
-                                <td><input type="time" name="schedule[<?php echo $date; ?>][pm_time_out]" class="form-control" required></td>
+                                <td><input type="time" name="schedule[<?php echo $date; ?>][am_time_in]" class="form-control" value="<?php echo $am_time_in; ?>" required></td>
+                                <td><input type="time" name="schedule[<?php echo $date; ?>][pm_time_out]" class="form-control" value="<?php echo $pm_time_out; ?>" required></td>
                                 <td><button type="button" class="btn btn-danger" onclick="removeRow(this)">Remove</button></td>
                             </tr>
                         <?php endfor; ?>
