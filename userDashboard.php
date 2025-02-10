@@ -245,9 +245,9 @@ $total_hours_all_time = calculate_total_hours($user_logs, $user_schedules);
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
-                    <!-- <li class="nav-item">
+                    <li class="nav-item">
                         <span class="nav-link">Welcome, <?php echo htmlspecialchars($_SESSION['user_name']); ?>!</span>
-                    </li> -->
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link btn btn-warning text-white" href="#changePasswordModal" data-bs-toggle="modal">Change Password</a>
                     </li>
@@ -288,10 +288,10 @@ $total_hours_all_time = calculate_total_hours($user_logs, $user_schedules);
                 <thead class="table-primary">
                     <tr>
                         <th>Date</th>
-                        <th>Time In (AM)</th>
-                        <th>Time Out (AM)</th>
-                        <th>Time In (PM)</th>
-                        <th>Time Out (PM)</th>
+                        <th>AM Arrival</th>
+                        <th>PM Arrival</th>
+                        <th>AM Departure</th>
+                        <th>PM Departure</th>
                         <th>Total Hours Rendered</th>
                     </tr>
                 </thead>
@@ -300,10 +300,10 @@ $total_hours_all_time = calculate_total_hours($user_logs, $user_schedules);
                         <?php foreach ($filtered_logs as $log_date => $log): ?>
                             <tr>
                                 <td data-label="Date"><?php echo htmlspecialchars($log_date); ?></td>
-                                <td data-label="Time In (AM)"><?php echo isset($log['am_arrival']) ? convert_to_12hr($log['am_arrival']) : '---'; ?></td>
-                                <td data-label="Time Out (AM)"><?php echo isset($log['am_departure']) ? convert_to_12hr($log['am_departure']) : '---'; ?></td>
-                                <td data-label="Time In (PM)"><?php echo isset($log['pm_arrival']) ? convert_to_12hr($log['pm_arrival']) : '---'; ?></td>
-                                <td data-label="Time Out (PM)"><?php echo isset($log['pm_departure']) ? convert_to_12hr($log['pm_departure']) : '---'; ?></td>
+                                <td data-label="AM Arrival"><?php echo isset($log['am_arrival']) ? convert_to_12hr($log['am_arrival']) : '---'; ?></td>
+                                <td data-label="PM Arrival"><?php echo isset($log['pm_arrival']) ? convert_to_12hr($log['pm_arrival']) : '---'; ?></td>
+                                <td data-label="AM Departure"><?php echo isset($log['am_departure']) ? convert_to_12hr($log['am_departure']) : '---'; ?></td>
+                                <td data-label="PM Departure"><?php echo isset($log['pm_departure']) ? convert_to_12hr($log['pm_departure']) : '---'; ?></td>
                                 <td data-label="Total Hours Rendered"><?php echo calculate_hours_rendered($log, $user_schedules[$log_date] ?? []); ?></td>
                             </tr>
                         <?php endforeach; ?>
@@ -422,7 +422,7 @@ document.getElementById('setNowButton').addEventListener('click', function() {
     const now = new Date();
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
-    document.getElementById('logTime').value = ${hours}:${minutes};
+    document.getElementById('logTime').value = `${hours}:${minutes}`;
 });
 </script>
 
@@ -435,7 +435,7 @@ document.getElementById('setNowButton').addEventListener('click', function() {
             var changePasswordModal = new bootstrap.Modal(document.getElementById('changePasswordModal'));
             changePasswordModal.show();
         <?php endif; ?>
-    </script>   
+    </script>
 
 </body>
 </html>
