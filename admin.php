@@ -86,7 +86,7 @@ if (isset($_POST['edit_log'])) {
     // echo "<script>Swal.fire('Success', 'Log updated successfully!', 'success').then(() => { window.location.href='admin.php?user={$selected_user_id}'; });</script>";
     // exit();
     header("Location: admin.php?user={$selected_user_id}");
-exit();
+    exit();
 }
 
 // Handle Log Deletion
