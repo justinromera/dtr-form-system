@@ -143,9 +143,73 @@ if (isset($_POST['delete_user'])) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <title>Admin Panel - DTR System</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+    .nav-collapsed {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.5s ease-in-out;
+    }
+
+    .nav-expanded {
+      max-height: 400px; /* Adjust based on total height of icons */
+      transition: max-height 0.5s ease-in-out;
+    }
+
+    .icon {
+      opacity: 0;
+      transform: translateY(-20px);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    .icon-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
 </head>
-<body>
-    <div class="container mt-4">
+<body class="bg-gray-100">
+<div 
+    class="fixed top-1/2 left-2.5 transform -translate-y-1/2 flex flex-col items-center bg-white shadow-md w-16 pt-4 pb-4 rounded-[20px] border border-gray-300">
+    <!-- Toggle Button (Top Icon) -->
+    <button id="menuToggle" class="p-3 mb-2 bg-gray-100 rounded-full shadow">
+      <div class="w-6 h-6 grid grid-cols-2 gap-1">
+        <div class="bg-black w-full h-full"></div>
+        <div class="bg-black w-full h-full"></div>
+        <div class="bg-black w-full h-full"></div>
+        <div class="bg-black w-full h-full"></div>
+      </div>
+    </button>
+
+    <!-- Collapsible Navigation Items -->
+    <div id="navBar" class="flex flex-col items-center nav-collapsed">
+        <button class="p-4 icon" style="transition-delay: 0.1s;">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5.121 17.804A4.992 4.992 0 0112 15a4.992 4.992 0 016.879 2.804M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
+          </svg>
+        </button>
+      <button class="p-4 icon" style="transition-delay: 0.2s;">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M7 8h10M7 12h4"></path>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+        </svg>
+      </button>
+      <button class="p-4 icon" style="transition-delay: 0.3s;">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3"></path>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 12c0 5.523-4.477 10-10 10S1 17.523 1 12 5.477 2 11 2c4.025 0 7.429 2.228 9 5.5"></path>
+        </svg>
+      </button>
+      <button class="p-4 icon" style="transition-delay: 0.4s;">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="size-6"><g stroke-width="0" id="SVGRepo_bgCarrier"></g><g stroke-linejoin="round" stroke-linecap="round" id="SVGRepo_tracerCarrier"></g><g id="SVGRepo_iconCarrier">
+            <path class="group-focus:fill-white" fill="#000000" d="M17.2929 14.2929C16.9024 14.6834 16.9024 15.3166 17.2929 15.7071C17.6834 16.0976 18.3166 16.0976 18.7071 15.7071L21.6201 12.7941C21.6351 12.7791 21.6497 12.7637 21.6637 12.748C21.87 12.5648 22 12.2976 22 12C22 11.7024 21.87 11.4352 21.6637 11.252C21.6497 11.2363 21.6351 11.2209 21.6201 11.2059L18.7071 8.29289C18.3166 7.90237 17.6834 7.90237 17.2929 8.29289C16.9024 8.68342 16.9024 9.31658 17.2929 9.70711L18.5858 11H13C12.4477 11 12 11.4477 12 12C12 12.5523 12.4477 13 13 13H18.5858L17.2929 14.2929Z"></path>
+            <path class="group-focus:fill-white" fill="#000" d="M5 2C3.34315 2 2 3.34315 2 5V19C2 20.6569 3.34315 22 5 22H14.5C15.8807 22 17 20.8807 17 19.5V16.7326C16.8519 16.647 16.7125 16.5409 16.5858 16.4142C15.9314 15.7598 15.8253 14.7649 16.2674 14H13C11.8954 14 11 13.1046 11 12C11 10.8954 11.8954 10 13 10H16.2674C15.8253 9.23514 15.9314 8.24015 16.5858 7.58579C16.7125 7.4591 16.8519 7.35296 17 7.26738V4.5C17 3.11929 15.8807 2 14.5 2H5Z"></path></g>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+    <div class="container mt-4" style="margin-left: 70px;">
         <h1 class="mb-4">Admin Panel - DTR System</h1>
 
         <!-- Select User Dropdown -->
@@ -323,8 +387,31 @@ if (isset($_POST['delete_user'])) {
             document.getElementById("edit_date").value = date;
             document.getElementById("log_date").value = date;
         }
-    </script>
 
+        const menuToggle = document.getElementById("menuToggle");
+        const navBar = document.getElementById("navBar");
+        const icons = document.querySelectorAll(".icon");
+
+        menuToggle.addEventListener("click", () => {
+        if (navBar.classList.contains("nav-collapsed")) {
+            navBar.classList.remove("nav-collapsed");
+            navBar.classList.add("nav-expanded");
+            // Show icons with animation
+            icons.forEach((icon, index) => {
+            setTimeout(() => {
+                icon.classList.add("icon-visible");
+            }, index * 100);
+            });
+        } else {
+            navBar.classList.remove("nav-expanded");
+            navBar.classList.add("nav-collapsed");
+            // Hide icons instantly
+            icons.forEach(icon => {
+            icon.classList.remove("icon-visible");
+            });
+        }
+        });
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
