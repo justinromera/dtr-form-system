@@ -83,8 +83,10 @@ if (isset($_POST['edit_log'])) {
     $context = stream_context_create($options);
     file_get_contents("{$firebase_url}user_logs/{$selected_user_id}/{$edit_date}.json", false, $context);
 
-    echo "<script>Swal.fire('Success', 'Log updated successfully!', 'success').then(() => { window.location.href='admin.php?user={$selected_user_id}'; });</script>";
-    exit();
+    // echo "<script>Swal.fire('Success', 'Log updated successfully!', 'success').then(() => { window.location.href='admin.php?user={$selected_user_id}'; });</script>";
+    // exit();
+    header("Location: admin.php?user={$selected_user_id}");
+exit();
 }
 
 // Handle Log Deletion
