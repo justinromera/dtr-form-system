@@ -178,7 +178,7 @@ if (isset($_POST['delete_user'])) {
                     <?php if (!empty($logs_data[$selected_user_id])): ?>
                         <?php foreach ($logs_data[$selected_user_id] as $logDate => $log): ?>
                             <tr>
-                                <td><?php echo htmlspecialchars($logDate); ?></td>
+                                <td><?php echo htmlspecialchars(date("Y-m-d", strtotime($logDate))); ?></td>
                                  <td><?php echo (strtotime($log['am_arrival']) < strtotime('09:00')) ? '09:00 AM' : format_time($log['am_arrival'] ?? '---'); ?></td>
                                 <td><?php echo format_time($log['am_departure'] ?? '---'); ?></td>
                                 <td><?php echo format_time($log['pm_arrival'] ?? '---'); ?></td>
