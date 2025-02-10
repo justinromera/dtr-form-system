@@ -86,7 +86,7 @@ if (isset($_POST['edit_log'])) {
     // echo "<script>Swal.fire('Success', 'Log updated successfully!', 'success').then(() => { window.location.href='admin.php?user={$selected_user_id}'; });</script>";
     // exit();
     header("Location: admin.php?user={$selected_user_id}");
-exit();
+    exit();
 }
 
 // Handle Log Deletion
@@ -176,9 +176,9 @@ if (isset($_POST['delete_user'])) {
                 </thead>
                 <tbody>
                     <?php if (!empty($logs_data[$selected_user_id])): ?>
-                        <?php foreach ($logs_data[$selected_user_id] as $logDate => $log): ?>
+                        <?php foreach ($logs_data[$selected_user_id] as $log_date => $log): ?>
                             <tr>
-                                <td><?php echo htmlspecialchars(date("Y-m-d", strtotime($logDate))); ?></td>
+                                <td><?php echo htmlspecialchars(date("Y-m-d", strtotime($log_date))); ?></td>
                                  <td><?php echo (strtotime($log['am_arrival']) < strtotime('09:00')) ? '09:00 AM' : format_time($log['am_arrival'] ?? '---'); ?></td>
                                 <td><?php echo format_time($log['am_departure'] ?? '---'); ?></td>
                                 <td><?php echo format_time($log['pm_arrival'] ?? '---'); ?></td>
@@ -186,9 +186,9 @@ if (isset($_POST['delete_user'])) {
                                 <td><?php echo calculate_hours($log); ?></td>
                                 <td>
                                     <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editLogModal" 
-                                        onclick="setEditData('<?php echo $logDate; ?>')">Edit</button>
+                                        onclick="setEditData('<?php echo $log_date; ?>')">Edit</button>
                                     <form method="POST" class="d-inline">
-                                        <input type="hidden" name="delete_date" value="<?php echo $logDate; ?>">
+                                        <input type="hidden" name="delete_date" value="<?php echo $log_date; ?>">
                                         <button type="submit" name="delete_log" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this log?')">Delete</button>
                                     </form>
                                 </td>
