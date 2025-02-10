@@ -10,6 +10,7 @@ if (!isset($_SESSION['user_id'])) {
 // Firebase Database URLs
 $firebase_users_url = "https://dtr-system-a192a-default-rtdb.firebaseio.com/users.json";
 $firebase_schedules_url = "https://dtr-system-a192a-default-rtdb.firebaseio.com/user_schedules.json";
+$firebase_logs_url = "https://dtr-system-a192a-default-rtdb.firebaseio.com/user_logs.json";
 
 // Fetch users from Firebase
 $users_json = file_get_contents($firebase_users_url);
@@ -18,10 +19,14 @@ $users_data = json_decode($users_json, true) ?? [];
 // Get selected user ID from dropdown
 $selected_user_id = $_GET['user'] ?? (key($users_data) ?? '');
 
-// Fetch schedules for the selected user
+// Fetch schedules and logs for the selected user
 $schedules_json = file_get_contents($firebase_schedules_url);
 $schedules_data = json_decode($schedules_json, true) ?? [];
 $user_schedules = $schedules_data[$selected_user_id] ?? [];
+
+$logs_json = file_get_contents($firebase_logs_url);
+$logs_data = json_decode($logs_json, true) ?? [];
+$user_logs = $logs_data[$selected_user_id] ?? [];
 
 // Handle schedule filing
 if (isset($_POST['submit_schedule'])) {
@@ -114,20 +119,17 @@ if (isset($_POST['submit_schedule'])) {
                         </tr>
                     </thead>
                     <tbody>
-                        <?php
-                        $start_date = strtotime('monday this week');
-                        for ($i = 0; $i < 7; $i++): 
-                            $date = date('Y-m-d', strtotime("+$i days", $start_date));
-                            $am_time_in = $user_schedules[$date]['am_time_in'] ?? '';
-                            $pm_time_out = $user_schedules[$date]['pm_time_out'] ?? '';
+                        <?php foreach ($user_logs as $log_date => $log): 
+                            $am_time_in = $user_schedules[$log_date]['am_time_in'] ?? '';
+                            $pm_time_out = $user_schedules[$log_date]['pm_time_out'] ?? '';
                         ?>
                             <tr>
-                                <td><input type="date" name="schedule[<?php echo $date; ?>][date]" class="form-control" value="<?php echo $date; ?>" required></td>
-                                <td><input type="time" name="schedule[<?php echo $date; ?>][am_time_in]" class="form-control" value="<?php echo $am_time_in; ?>" required></td>
-                                <td><input type="time" name="schedule[<?php echo $date; ?>][pm_time_out]" class="form-control" value="<?php echo $pm_time_out; ?>" required></td>
+                                <td><input type="date" name="schedule[<?php echo $log_date; ?>][date]" class="form-control" value="<?php echo $log_date; ?>" required></td>
+                                <td><input type="time" name="schedule[<?php echo $log_date; ?>][am_time_in]" class="form-control" value="<?php echo $am_time_in; ?>" required></td>
+                                <td><input type="time" name="schedule[<?php echo $log_date; ?>][pm_time_out]" class="form-control" value="<?php echo $pm_time_out; ?>" required></td>
                                 <td><button type="button" class="btn btn-danger" onclick="removeRow(this)">Remove</button></td>
                             </tr>
-                        <?php endfor; ?>
+                        <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
