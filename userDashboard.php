@@ -52,43 +52,6 @@ if (isset($_POST['change_password'])) {
     exit();
 }
 
-// Determine default log type based on current logs
-$default_log_type = 'AM Arrival';
-$current_hour = date('H');
-$available_log_types = [];
-if (!empty($user_logs)) {
-    $latest_log = end($user_logs);
-    if (isset($latest_log['am_arrival']) && !isset($latest_log['am_departure'])) {
-        $default_log_type = 'AM Departure';
-        $available_log_types = ['AM Departure'];
-    } elseif (isset($latest_log['am_departure']) && !isset($latest_log['pm_arrival'])) {
-        $default_log_type = 'PM Arrival';
-        $available_log_types = ['PM Arrival'];
-    } elseif (isset($latest_log['pm_arrival']) && !isset($latest_log['pm_departure'])) {
-        $default_log_type = 'PM Departure';
-        $available_log_types = ['PM Departure'];
-    } elseif ($current_hour >= 12 && !isset($latest_log['am_arrival'])) {
-        // Mark as absent for AM and only show PM options
-        $default_log_type = 'PM Arrival';
-        $available_log_types = ['PM Arrival', 'PM Departure'];
-    }
-} else {
-    if ($current_hour < 12) {
-        $available_log_types = ['AM Arrival'];
-    } else {
-        $available_log_types = ['PM Arrival', 'PM Departure'];
-    }
-}
-
-// Determine if the user has already logged all required times for the day
-$already_logged_for_day = false;
-if (!empty($user_logs)) {
-    $latest_log = end($user_logs);
-    if (isset($latest_log['am_arrival']) && isset($latest_log['am_departure']) && isset($latest_log['pm_arrival']) && isset($latest_log['pm_departure'])) {
-        $already_logged_for_day = true;
-    }
-}
-
 // Get month filter (default: current month)
 $selected_month = $_GET['month'] ?? date('Y-m');
 
@@ -105,50 +68,80 @@ foreach ($user_logs as $log_date => $log) {
     }
 }
 
-// Get current time for default log time
-$current_time = date('H:i');
-
-// Function to calculate total hours rendered in hours and minutes based on schedule
-function calculate_hours_rendered($log, $schedule) {
-    $total_seconds = 0;
-
-    if (isset($schedule['am_time_in']) && isset($schedule['pm_time_out'])) {
-        $am_time_in = strtotime($schedule['am_time_in']);
-        $pm_time_out = strtotime($schedule['pm_time_out']);
-        $total_seconds += ($pm_time_out - $am_time_in);
-    }
-
-    $hours = floor($total_seconds / 3600);
-    $minutes = floor(($total_seconds % 3600) / 60);
-
-    return sprintf('%02d hours and %02d minutes', $hours, $minutes);
-}
-
 // Function to convert time to 12-hour format
-function convert_to_12hr($time) {
-    return date('h:i A', strtotime($time));
+function format_time($time) {
+    return ($time && $time !== '---' && $time !== 'ABSENT') ? date("g:i A", strtotime($time)) : $time;
 }
 
-// Function to calculate total hours for a given period based on schedule
-function calculate_total_hours($logs, $schedules) {
+// Function to calculate total rendered hours for a single log entry
+function calculate_hours($log) {
+    if (
+        isset($log['am_arrival'], $log['am_departure'], $log['pm_arrival'], $log['pm_departure']) &&
+        !empty($log['am_arrival']) && !empty($log['am_departure']) && 
+        !empty($log['pm_arrival']) && !empty($log['pm_departure'])
+    ) {
+        $morning_seconds = max(0, strtotime($log['am_departure']) - strtotime($log['am_arrival']));
+        $afternoon_seconds = max(0, strtotime($log['pm_departure']) - strtotime($log['pm_arrival']));
+        $total_seconds = $morning_seconds + $afternoon_seconds;
+
+        $hours = floor($total_seconds / 3600);
+        $minutes = floor(($total_seconds % 3600) / 60);
+
+        return "{$hours} hour" . ($hours > 1 ? "s" : "") . 
+               ($minutes > 0 ? " {$minutes} minute" . ($minutes > 1 ? "s" : "") : "");
+    }
+    return '---';
+}
+
+// Function to calculate total hours for all logs of a user
+function calculate_total_hours($logs) {
     $total_seconds = 0;
-    foreach ($logs as $log_date => $log) {
-        if (isset($schedules[$log_date]['am_time_in']) && isset($schedules[$log_date]['pm_time_out'])) {
-            $am_time_in = strtotime($schedules[$log_date]['am_time_in']);
-            $pm_time_out = strtotime($schedules[$log_date]['pm_time_out']);
-            $total_seconds += ($pm_time_out - $am_time_in);
+    foreach ($logs as $log) {
+        if (
+            isset($log['am_arrival'], $log['am_departure'], $log['pm_arrival'], $log['pm_departure']) &&
+            !empty($log['am_arrival']) && !empty($log['am_departure']) && 
+            !empty($log['pm_arrival']) && !empty($log['pm_departure'])
+        ) {
+            $morning_seconds = max(0, strtotime($log['am_departure']) - strtotime($log['am_arrival']));
+            $afternoon_seconds = max(0, strtotime($log['pm_departure']) - strtotime($log['pm_arrival']));
+            $total_seconds += $morning_seconds + $afternoon_seconds;
         }
     }
     $hours = floor($total_seconds / 3600);
     $minutes = floor(($total_seconds % 3600) / 60);
-    return sprintf('%02d hours and %02d minutes', $hours, $minutes);
+
+    return "{$hours} hour" . ($hours > 1 ? "s" : "") . 
+           ($minutes > 0 ? " {$minutes} minute" . ($minutes > 1 ? "s" : "") : "");
 }
 
-// Calculate total hours for the selected month based on schedule
-$total_hours_month = calculate_total_hours($filtered_logs, $user_schedules);
+// Calculate total hours for the selected month based on logs
+$total_hours_month = calculate_total_hours($filtered_logs);
 
-// Calculate total hours for the entire time based on schedule
-$total_hours_all_time = calculate_total_hours($user_logs, $user_schedules);
+// Calculate total hours for the entire time based on logs
+$total_hours_all_time = calculate_total_hours($user_logs);
+
+// Determine if the user has already logged all required times for the day
+$today_date = date('Y-m-d');
+$already_logged_for_day = isset($user_logs[$today_date]) && 
+                          isset($user_logs[$today_date]['am_arrival']) && 
+                          isset($user_logs[$today_date]['am_departure']) && 
+                          isset($user_logs[$today_date]['pm_arrival']) && 
+                          isset($user_logs[$today_date]['pm_departure']);
+
+// Determine available log types based on existing logs for the day
+$available_log_types = [];
+if (!isset($user_logs[$today_date]['am_arrival'])) {
+    $available_log_types[] = 'AM Arrival';
+}
+if (!isset($user_logs[$today_date]['am_departure'])) {
+    $available_log_types[] = 'AM Departure';
+}
+if (!isset($user_logs[$today_date]['pm_arrival'])) {
+    $available_log_types[] = 'PM Arrival';
+}
+if (!isset($user_logs[$today_date]['pm_departure'])) {
+    $available_log_types[] = 'PM Departure';
+}
 ?>
 
 <!DOCTYPE html>
@@ -288,10 +281,10 @@ $total_hours_all_time = calculate_total_hours($user_logs, $user_schedules);
                 <thead class="table-primary">
                     <tr>
                         <th>Date</th>
-                        <th>AM Arrival</th>
-                        <th>PM Arrival</th>
-                        <th>AM Departure</th>
-                        <th>PM Departure</th>
+                        <th>Time In (AM)</th>
+                        <th>Time Out (AM)</th>
+                        <th>Time In (PM)</th>
+                        <th>Time Out (PM)</th>
                         <th>Total Hours Rendered</th>
                     </tr>
                 </thead>
@@ -300,11 +293,11 @@ $total_hours_all_time = calculate_total_hours($user_logs, $user_schedules);
                         <?php foreach ($filtered_logs as $log_date => $log): ?>
                             <tr>
                                 <td data-label="Date"><?php echo htmlspecialchars($log_date); ?></td>
-                                <td data-label="AM Arrival"><?php echo isset($log['am_arrival']) ? convert_to_12hr($log['am_arrival']) : '---'; ?></td>
-                                <td data-label="PM Arrival"><?php echo isset($log['pm_arrival']) ? convert_to_12hr($log['pm_arrival']) : '---'; ?></td>
-                                <td data-label="AM Departure"><?php echo isset($log['am_departure']) ? convert_to_12hr($log['am_departure']) : '---'; ?></td>
-                                <td data-label="PM Departure"><?php echo isset($log['pm_departure']) ? convert_to_12hr($log['pm_departure']) : '---'; ?></td>
-                                <td data-label="Total Hours Rendered"><?php echo calculate_hours_rendered($log, $user_schedules[$log_date] ?? []); ?></td>
+                                <td data-label="Time In (AM)"><?php echo isset($log['am_arrival']) ? format_time($log['am_arrival']) : '---'; ?></td>
+                                <td data-label="Time Out (AM)"><?php echo isset($log['am_departure']) ? format_time($log['am_departure']) : '---'; ?></td>
+                                <td data-label="Time In (PM)"><?php echo isset($log['pm_arrival']) ? format_time($log['pm_arrival']) : '---'; ?></td>
+                                <td data-label="Time Out (PM)"><?php echo isset($log['pm_departure']) ? format_time($log['pm_departure']) : '---'; ?></td>
+                                <td data-label="Total Hours Rendered"><?php echo calculate_hours($log); ?></td>
                             </tr>
                         <?php endforeach; ?>
                     <?php else : ?>
@@ -362,14 +355,14 @@ $total_hours_all_time = calculate_total_hours($user_logs, $user_schedules);
                             <label for="logType" class="form-label">Action</label>
                             <select class="form-control" id="logType" name="logType">
                                 <?php foreach ($available_log_types as $log_type): ?>
-                                    <option value="<?php echo $log_type; ?>"><?php echo $log_type; ?></option>
+                                    <option value="<?php echo strtolower(str_replace(' ', '_', $log_type)); ?>"><?php echo $log_type; ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
                         <div class="mb-3">
                             <label for="logTime" class="form-label">Select Time</label>
                             <div class="input-group">
-                                <input type="time" class="form-control" id="logTime" name="logTime" value="<?php echo $current_time; ?>" required>
+                                <input type="time" class="form-control" id="logTime" name="logTime" value="<?php echo date('H:i'); ?>" required>
                                 <button type="button" class="btn btn-secondary" id="setNowButton">Now</button>
                             </div>
                         </div>
@@ -435,7 +428,7 @@ document.getElementById('setNowButton').addEventListener('click', function() {
             var changePasswordModal = new bootstrap.Modal(document.getElementById('changePasswordModal'));
             changePasswordModal.show();
         <?php endif; ?>
-    </script>
+    </script>   
 
 </body>
 </html>

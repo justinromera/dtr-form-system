@@ -10,6 +10,10 @@ $logs_data = json_decode($logs_json, true) ?? [];
 $users_json = file_get_contents($firebase_url . "users.json");
 $users_data = json_decode($users_json, true) ?? [];
 
+// Fetch schedules
+$schedules_json = file_get_contents($firebase_url . "user_schedules.json");
+$schedules_data = json_decode($schedules_json, true) ?? [];
+
 // Get selected user ID from dropdown
 $selected_user_id = $_GET['user'] ?? (key($users_data) ?? '');
 
@@ -18,15 +22,22 @@ function format_time($time) {
     return ($time && $time !== '---' && $time !== 'ABSENT') ? date("g:i A", strtotime($time)) : $time;
 }
 
-// Function to calculate total rendered hours for a single log entry
-function calculate_hours($log) {
+// Function to calculate rendered hours based on user log and schedule
+function calculate_rendered_hours($log, $schedule) {
     if (
         isset($log['am_arrival'], $log['am_departure'], $log['pm_arrival'], $log['pm_departure']) &&
         !empty($log['am_arrival']) && !empty($log['am_departure']) && 
         !empty($log['pm_arrival']) && !empty($log['pm_departure'])
     ) {
-        $morning_seconds = max(0, strtotime($log['am_departure']) - strtotime($log['am_arrival']));
-        $afternoon_seconds = max(0, strtotime($log['pm_departure']) - strtotime($log['pm_arrival']));
+        $am_time_in = isset($schedule['am_time_in']) ? strtotime($schedule['am_time_in']) : strtotime($log['am_arrival']);
+        $pm_time_out = isset($schedule['pm_time_out']) ? strtotime($schedule['pm_time_out']) : strtotime($log['pm_departure']);
+        $am_arrival = max(strtotime($log['am_arrival']), $am_time_in);
+        $am_departure = strtotime($log['am_departure']);
+        $pm_arrival = strtotime($log['pm_arrival']);
+        $pm_departure = min(strtotime($log['pm_departure']), $pm_time_out);
+
+        $morning_seconds = max(0, $am_departure - $am_arrival);
+        $afternoon_seconds = max(0, $pm_departure - $pm_arrival);
         $total_seconds = $morning_seconds + $afternoon_seconds;
 
         $hours = floor($total_seconds / 3600);
@@ -38,17 +49,24 @@ function calculate_hours($log) {
     return '---';
 }
 
-// Function to calculate total hours for all logs of a user
-function calculate_total_hours($logs) {
+// Function to calculate total rendered hours for all logs of a user
+function calculate_total_rendered_hours($logs, $schedules) {
     $total_seconds = 0;
-    foreach ($logs as $log) {
+    foreach ($logs as $log_date => $log) {
         if (
             isset($log['am_arrival'], $log['am_departure'], $log['pm_arrival'], $log['pm_departure']) &&
             !empty($log['am_arrival']) && !empty($log['am_departure']) && 
             !empty($log['pm_arrival']) && !empty($log['pm_departure'])
         ) {
-            $morning_seconds = max(0, strtotime($log['am_departure']) - strtotime($log['am_arrival']));
-            $afternoon_seconds = max(0, strtotime($log['pm_departure']) - strtotime($log['pm_arrival']));
+            $am_time_in = isset($schedules[$log_date]['am_time_in']) ? strtotime($schedules[$log_date]['am_time_in']) : strtotime($log['am_arrival']);
+            $pm_time_out = isset($schedules[$log_date]['pm_time_out']) ? strtotime($schedules[$log_date]['pm_time_out']) : strtotime($log['pm_departure']);
+            $am_arrival = max(strtotime($log['am_arrival']), $am_time_in);
+            $am_departure = strtotime($log['am_departure']);
+            $pm_arrival = strtotime($log['pm_arrival']);
+            $pm_departure = min(strtotime($log['pm_departure']), $pm_time_out);
+
+            $morning_seconds = max(0, $am_departure - $am_arrival);
+            $afternoon_seconds = max(0, $pm_departure - $pm_arrival);
             $total_seconds += $morning_seconds + $afternoon_seconds;
         }
     }
@@ -86,7 +104,7 @@ if (isset($_POST['edit_log'])) {
     // echo "<script>Swal.fire('Success', 'Log updated successfully!', 'success').then(() => { window.location.href='admin.php?user={$selected_user_id}'; });</script>";
     // exit();
     header("Location: admin.php?user={$selected_user_id}");
-    exit();
+exit();
 }
 
 // Handle Log Deletion
@@ -240,19 +258,19 @@ if (isset($_POST['delete_user'])) {
                 </thead>
                 <tbody>
                     <?php if (!empty($logs_data[$selected_user_id])): ?>
-                        <?php foreach ($logs_data[$selected_user_id] as $log_date => $log): ?>
+                        <?php foreach ($logs_data[$selected_user_id] as $logDate => $log): ?>
                             <tr>
-                                <td><?php echo htmlspecialchars(date("Y-m-d", strtotime($log_date))); ?></td>
+                                <td><?php echo htmlspecialchars($logDate); ?></td>
                                  <td><?php echo (strtotime($log['am_arrival']) < strtotime('09:00')) ? '09:00 AM' : format_time($log['am_arrival'] ?? '---'); ?></td>
                                 <td><?php echo format_time($log['am_departure'] ?? '---'); ?></td>
                                 <td><?php echo format_time($log['pm_arrival'] ?? '---'); ?></td>
                                 <td><?php echo format_time($log['pm_departure'] ?? '---'); ?></td>
-                                <td><?php echo calculate_hours($log); ?></td>
+                                <td><?php echo calculate_rendered_hours($log, $schedules_data[$selected_user_id][$logDate] ?? []); ?></td>
                                 <td>
                                     <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editLogModal" 
-                                        onclick="setEditData('<?php echo $log_date; ?>')">Edit</button>
+                                        onclick="setEditData('<?php echo $logDate; ?>')">Edit</button>
                                     <form method="POST" class="d-inline">
-                                        <input type="hidden" name="delete_date" value="<?php echo $log_date; ?>">
+                                        <input type="hidden" name="delete_date" value="<?php echo $logDate; ?>">
                                         <button type="submit" name="delete_log" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this log?')">Delete</button>
                                     </form>
                                 </td>
@@ -273,14 +291,14 @@ if (isset($_POST['delete_user'])) {
                 <thead class="table-secondary">
                     <tr>
                         <th>User</th>
-                        <th>Total Hours</th>
+                        <th>Total Rendered Hours</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($users_data as $user_id => $user): ?>
                         <tr>
                             <td><?php echo htmlspecialchars($user['name'] ?? 'Unknown User'); ?></td>
-                            <td><?php echo calculate_total_hours($logs_data[$user_id] ?? []); ?></td>
+                            <td><?php echo calculate_total_rendered_hours($logs_data[$user_id] ?? [], $schedules_data[$user_id] ?? []); ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>

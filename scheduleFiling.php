@@ -10,6 +10,7 @@ if (!isset($_SESSION['user_id'])) {
 // Firebase Database URLs
 $firebase_users_url = "https://dtr-system-a192a-default-rtdb.firebaseio.com/users.json";
 $firebase_schedules_url = "https://dtr-system-a192a-default-rtdb.firebaseio.com/user_schedules.json";
+$firebase_logs_url = "https://dtr-system-a192a-default-rtdb.firebaseio.com/user_logs.json";
 
 // Fetch users from Firebase
 $users_json = file_get_contents($firebase_users_url);
@@ -18,10 +19,14 @@ $users_data = json_decode($users_json, true) ?? [];
 // Get selected user ID from dropdown
 $selected_user_id = $_GET['user'] ?? (key($users_data) ?? '');
 
-// Fetch schedules for the selected user
+// Fetch schedules and logs for the selected user
 $schedules_json = file_get_contents($firebase_schedules_url);
 $schedules_data = json_decode($schedules_json, true) ?? [];
 $user_schedules = $schedules_data[$selected_user_id] ?? [];
+
+$logs_json = file_get_contents($firebase_logs_url);
+$logs_data = json_decode($logs_json, true) ?? [];
+$user_logs = $logs_data[$selected_user_id] ?? [];
 
 // Handle schedule filing
 if (isset($_POST['submit_schedule'])) {
@@ -56,8 +61,54 @@ if (isset($_POST['submit_schedule'])) {
         file_get_contents("https://dtr-system-a192a-default-rtdb.firebaseio.com/user_schedules/$selected_user_id/$date.json", false, $context);
     }
 
-    echo "<script>alert('Schedule filed successfully!'); window.location.href='scheduleFiling.php?user=$selected_user_id';</script>";
+    echo "<script>
+            alert('Schedule filed successfully!');
+            window.location.href='scheduleFiling.php?user=$selected_user_id';
+          </script>";
     exit();
+}
+
+// Function to calculate supposed hours based on schedule
+function calculate_supposed_hours($schedule) {
+    if (isset($schedule['am_time_in'], $schedule['pm_time_out']) && !empty($schedule['am_time_in']) && !empty($schedule['pm_time_out'])) {
+        $am_time_in = strtotime($schedule['am_time_in']);
+        $pm_time_out = strtotime($schedule['pm_time_out']);
+        $total_seconds = max(0, $pm_time_out - $am_time_in);
+
+        $hours = floor($total_seconds / 3600);
+        $minutes = floor(($total_seconds % 3600) / 60);
+
+        return "{$hours} hour" . ($hours > 1 ? "s" : "") . 
+               ($minutes > 0 ? " {$minutes} minute" . ($minutes > 1 ? "s" : "") : "");
+    }
+    return '---';
+}
+
+// Function to calculate rendered hours based on user log and schedule
+function calculate_rendered_hours($log, $schedule) {
+    if (
+        isset($log['am_arrival'], $log['am_departure'], $log['pm_arrival'], $log['pm_departure']) &&
+        !empty($log['am_arrival']) && !empty($log['am_departure']) && 
+        !empty($log['pm_arrival']) && !empty($log['pm_departure'])
+    ) {
+        $am_time_in = isset($schedule['am_time_in']) ? strtotime($schedule['am_time_in']) : strtotime($log['am_arrival']);
+        $pm_time_out = isset($schedule['pm_time_out']) ? strtotime($schedule['pm_time_out']) : strtotime($log['pm_departure']);
+        $am_arrival = max(strtotime($log['am_arrival']), $am_time_in);
+        $am_departure = strtotime($log['am_departure']);
+        $pm_arrival = strtotime($log['pm_arrival']);
+        $pm_departure = min(strtotime($log['pm_departure']), $pm_time_out);
+
+        $morning_seconds = max(0, $am_departure - $am_arrival);
+        $afternoon_seconds = max(0, $pm_departure - $pm_arrival);
+        $total_seconds = $morning_seconds + $afternoon_seconds;
+
+        $hours = floor($total_seconds / 3600);
+        $minutes = floor(($total_seconds % 3600) / 60);
+
+        return "{$hours} hour" . ($hours > 1 ? "s" : "") . 
+               ($minutes > 0 ? " {$minutes} minute" . ($minutes > 1 ? "s" : "") : "");
+    }
+    return '---';
 }
 ?>
 
@@ -84,6 +135,9 @@ if (isset($_POST['submit_schedule'])) {
         .btn {
             margin-bottom: 10px;
         }
+        .schedule-cell {
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -108,26 +162,33 @@ if (isset($_POST['submit_schedule'])) {
                     <thead class="table-primary">
                         <tr>
                             <th>Date</th>
-                            <th>Time In (AM)</th>
-                            <th>Time Out (PM)</th>
+                            <th>Schedule</th>
                             <th>Actions</th>
+                            <th>Total Hours</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php
-                        $start_date = strtotime('monday this week');
-                        for ($i = 0; $i < 7; $i++): 
-                            $date = date('Y-m-d', strtotime("+$i days", $start_date));
-                            $am_time_in = $user_schedules[$date]['am_time_in'] ?? '';
-                            $pm_time_out = $user_schedules[$date]['pm_time_out'] ?? '';
+                        <?php foreach ($user_logs as $log_date => $log): 
+                            $am_time_in = $user_schedules[$log_date]['am_time_in'] ?? '';
+                            $pm_time_out = $user_schedules[$log_date]['pm_time_out'] ?? '';
+                            $real_am_time_in = $log['am_arrival'] ?? '---';
+                            $real_pm_time_out = $log['pm_departure'] ?? '---';
+                            $supposed_hours = calculate_supposed_hours($user_schedules[$log_date] ?? []);
+                            $rendered_hours = calculate_rendered_hours($log, $user_schedules[$log_date] ?? []);
                         ?>
                             <tr>
-                                <td><input type="date" name="schedule[<?php echo $date; ?>][date]" class="form-control" value="<?php echo $date; ?>" required></td>
-                                <td><input type="time" name="schedule[<?php echo $date; ?>][am_time_in]" class="form-control" value="<?php echo $am_time_in; ?>" required></td>
-                                <td><input type="time" name="schedule[<?php echo $date; ?>][pm_time_out]" class="form-control" value="<?php echo $pm_time_out; ?>" required></td>
+                                <td><?php echo $log_date; ?></td>
+                                <td class="schedule-cell" data-bs-toggle="modal" data-bs-target="#editScheduleModal" onclick="setEditScheduleData('<?php echo $log_date; ?>', '<?php echo $am_time_in; ?>', '<?php echo $pm_time_out; ?>')">
+                                    <div><?php echo $am_time_in ? date("g:i A", strtotime($am_time_in)) : '---'; ?> - <?php echo $pm_time_out ? date("g:i A", strtotime($pm_time_out)) : '---'; ?></div>
+                                    <small><?php echo $real_am_time_in ? date("g:i A", strtotime($real_am_time_in)) : '---'; ?> - <?php echo $real_pm_time_out ? date("g:i A", strtotime($real_pm_time_out)) : '---'; ?></small>
+                                </td>
                                 <td><button type="button" class="btn btn-danger" onclick="removeRow(this)">Remove</button></td>
+                                <td>
+                                    <div>Supposed: <?php echo $supposed_hours; ?></div>
+                                    <div>Rendered: <?php echo $rendered_hours; ?></div>
+                                </td>
                             </tr>
-                        <?php endfor; ?>
+                        <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
@@ -138,19 +199,49 @@ if (isset($_POST['submit_schedule'])) {
         </form>
     </div>
 
+    <!-- Edit Schedule Modal -->
+    <div class="modal fade" id="editScheduleModal" tabindex="-1" aria-labelledby="editScheduleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editScheduleModalLabel">Edit Schedule</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editScheduleForm">
+                        <input type="hidden" name="edit_date" id="edit_date">
+                        <div class="mb-3">
+                            <label for="edit_am_time_in" class="form-label">Time In (AM):</label>
+                            <input type="time" name="edit_am_time_in" id="edit_am_time_in" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit_pm_time_out" class="form-label">Time Out (PM):</label>
+                            <input type="time" name="edit_pm_time_out" id="edit_pm_time_out" class="form-control" required>
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="saveSchedule()">Save changes</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         function addRow() {
             const table = document.getElementById('scheduleTable').getElementsByTagName('tbody')[0];
             const newRow = table.insertRow();
             const dateCell = newRow.insertCell(0);
-            const amTimeInCell = newRow.insertCell(1);
-            const pmTimeOutCell = newRow.insertCell(2);
-            const actionsCell = newRow.insertCell(3);
+            const scheduleCell = newRow.insertCell(1);
+            const actionsCell = newRow.insertCell(2);
+            const totalHoursCell = newRow.insertCell(3);
 
             dateCell.innerHTML = '<input type="date" name="schedule[new][date]" class="form-control" required>';
-            amTimeInCell.innerHTML = '<input type="time" name="schedule[new][am_time_in]" class="form-control" required>';
-            pmTimeOutCell.innerHTML = '<input type="time" name="schedule[new][pm_time_out]" class="form-control" required>';
+            scheduleCell.innerHTML = '<div>--- - ---</div><small>--- - ---</small>';
+            scheduleCell.classList.add('schedule-cell');
+            scheduleCell.setAttribute('data-bs-toggle', 'modal');
+            scheduleCell.setAttribute('data-bs-target', '#editScheduleModal');
+            scheduleCell.setAttribute('onclick', 'setEditScheduleData("", "", "")');
             actionsCell.innerHTML = '<button type="button" class="btn btn-danger" onclick="removeRow(this)">Remove</button>';
+            totalHoursCell.innerHTML = '<div>Supposed: ---</div><div>Rendered: ---</div>';
         }
 
         function removeRow(button) {
@@ -162,12 +253,53 @@ if (isset($_POST['submit_schedule'])) {
             const table = document.getElementById('scheduleTable').getElementsByTagName('tbody')[0];
             const firstRow = table.rows[0];
             const amTimeIn = firstRow.cells[1].getElementsByTagName('input')[0].value;
-            const pmTimeOut = firstRow.cells[2].getElementsByTagName('input')[0].value;
+            const pmTimeOut = firstRow.cells[1].getElementsByTagName('input')[1].value;
 
             for (let i = 1; i < table.rows.length; i++) {
                 table.rows[i].cells[1].getElementsByTagName('input')[0].value = amTimeIn;
-                table.rows[i].cells[2].getElementsByTagName('input')[0].value = pmTimeOut;
+                table.rows[i].cells[1].getElementsByTagName('input')[1].value = pmTimeOut;
             }
+        }
+
+        function setEditScheduleData(date, amTimeIn, pmTimeOut) {
+            document.getElementById('edit_date').value = date;
+            document.getElementById('edit_am_time_in').value = amTimeIn;
+            document.getElementById('edit_pm_time_out').value = pmTimeOut;
+        }
+
+        function saveSchedule() {
+            const date = document.getElementById('edit_date').value;
+            const amTimeIn = document.getElementById('edit_am_time_in').value;
+            const pmTimeOut = document.getElementById('edit_pm_time_out').value;
+
+            const table = document.getElementById('scheduleTable').getElementsByTagName('tbody')[0];
+            for (let i = 0; i < table.rows.length; i++) {
+                if (table.rows[i].cells[0].innerText === date) {
+                    table.rows[i].cells[1].innerHTML = `<div>${amTimeIn} - ${pmTimeOut}</div><small>--- - ---</small>`;
+                    table.rows[i].cells[1].setAttribute('onclick', `setEditScheduleData('${date}', '${amTimeIn}', '${pmTimeOut}')`);
+                    break;
+                }
+            }
+
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editScheduleModal'));
+            modal.hide();
+
+            // Save changes to Firebase
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", "saveSchedule.php", true);
+            xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    alert('Schedule updated successfully!');
+                    location.reload();
+                }
+            };
+            xhr.send(JSON.stringify({
+                user: "<?php echo $selected_user_id; ?>",
+                date: date,
+                am_time_in: amTimeIn,
+                pm_time_out: pmTimeOut
+            }));
         }
     </script>
 
