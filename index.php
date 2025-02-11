@@ -44,11 +44,14 @@ if (isset($_POST['login'])) {
 </head>
 <body>
     <div class="main-container">
-        <div class="image-section"></div>
+        <div class="image-section">
+
+        <img src="cpcpa.jpg" alt="DTR System Logo">
+        </div>
 
         <div class="login-container">
             <div class="login-header">
-                <img src="../img/bfp2.jpg" alt="DTR System Logo">
+                <!-- <img src="../img/bfp2.jpg" alt="DTR System Logo"> -->
                 <h1>DTR System</h1>
                 <p>Welcome! Please log in to your account.</p>
             </div>
@@ -71,10 +74,10 @@ if (isset($_POST['login'])) {
                 </div>
                 <p style="color: red;" class="error-message"><?php echo htmlspecialchars($loginError); ?></p>
             </form>
-            <div class="login-footer">
+            <!-- <div class="login-footer">
                 <p>Don't have an account? <a href="signup.php">Signup here</a></p>
                 <p><a href="../forgot_password.php" id="forgotPasswordLink">Forgot your password?</a></p>
-            </div>
+            </div> -->
         </div>
     </div>
 

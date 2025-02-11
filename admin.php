@@ -1,4 +1,5 @@
 <?php
+include 'auth.php';
 // Firebase Database URLs
 $firebase_url = "https://dtr-system-a192a-default-rtdb.firebaseio.com/";
 
@@ -6,7 +7,7 @@ $firebase_url = "https://dtr-system-a192a-default-rtdb.firebaseio.com/";
 $logs_json = file_get_contents($firebase_url . "user_logs.json");
 $logs_data = json_decode($logs_json, true) ?? [];
 
-// Fetch users
+// Fetch userss
 $users_json = file_get_contents($firebase_url . "users.json");
 $users_data = json_decode($users_json, true) ?? [];
 
@@ -307,7 +308,7 @@ if (isset($_POST['delete_user'])) {
             </table>
         </div>
 
-        Add User Button
+        <!-- Add User Button -->
         <!-- <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addUserModal">Add User</button> -->
         <!-- Remove User Button -->
         <!-- <button class="btn btn-danger mb-3" data-bs-toggle="modal" data-bs-target="#removeUserModal">Remove User</button> -->
