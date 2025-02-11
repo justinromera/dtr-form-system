@@ -20,6 +20,11 @@ $users_data = json_decode($users_json, true) ?? [];
 $logs_data = json_decode($logs_json, true) ?? [];
 $schedules_data = json_decode($schedules_json, true) ?? [];
 
+// Office location coordinates
+$office_lat = 10.260278;
+$office_lng = 123.829694;
+$allowed_radius = 100; // 100 meters
+
 // Get current user details
 $user_id = $_SESSION['user_id'];
 $user = $users_data[$user_id] ?? [];
@@ -271,7 +276,7 @@ if (!isset($user_logs[$today_date]['pm_departure'])) {
                     <button type="submit" class="btn  me-2 mb-2">Search</button>
                 </div>
             </form>
-            <button class="btn mb-2" data-bs-toggle="modal" data-bs-target="<?php echo $already_logged_for_day ? '#alreadyLoggedModal' : '#timeLogModal'; ?>">
+            <button class="btn mb-2" id="logTimeButton">
                 Log Time
             </button>
         </div>
@@ -366,6 +371,8 @@ if (!isset($user_logs[$today_date]['pm_departure'])) {
                                 <button type="button" class="btn btn-secondary" id="setNowButton">Now</button>
                             </div>
                         </div>
+                        <input type="hidden" id="latitude" name="latitude">
+                        <input type="hidden" id="longitude" name="longitude">
                         <button type="submit" class="btn btn-success w-100">Log</button>
                     </form>
                 </div>
@@ -417,6 +424,47 @@ document.getElementById('setNowButton').addEventListener('click', function() {
     const minutes = String(now.getMinutes()).padStart(2, '0');
     document.getElementById('logTime').value = `${hours}:${minutes}`;
 });
+
+document.getElementById('logTimeButton').addEventListener('click', function() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            const userLat = position.coords.latitude;
+            const userLng = position.coords.longitude;
+            const officeLat = <?php echo $office_lat; ?>;
+            const officeLng = <?php echo $office_lng; ?>;
+            const distance = getDistance(userLat, userLng, officeLat, officeLng);
+
+            if (distance <= 100) { // 100 meters radius
+                document.getElementById('latitude').value = userLat;
+                document.getElementById('longitude').value = userLng;
+                var timeLogModal = new bootstrap.Modal(document.getElementById('timeLogModal'));
+                timeLogModal.show();
+            } else {
+                alert('You are not in the office. Please log your time from the office location.');
+            }
+        }, function(error) {
+            alert('Error getting your location. Please enable location services and try again.');
+        });
+    } else {
+        alert('Geolocation is not supported by this browser.');
+    }
+});
+
+function getDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371e3; // metres
+    const φ1 = lat1 * Math.PI/180; // φ, λ in radians
+    const φ2 = lat2 * Math.PI/180;
+    const Δφ = (lat2-lat1) * Math.PI/180;
+    const Δλ = (lon2-lon1) * Math.PI/180;
+
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    const d = R * c; // in metres
+    return d;
+}
 </script>
 
     <!-- Bootstrap JS -->
