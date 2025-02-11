@@ -280,9 +280,9 @@ if (isset($_POST['delete_user'])) {
                 </table>
             </div>
 
-            <button type="button" class="btn btn-secondary" onclick="addRow()">Add Row</button>
-            <button type="button" class="btn btn-info" onclick="applyToAll()">Apply to All</button>
-            <button type="submit" name="submit_schedule" class="btn btn-success w-100">Submit Schedule</button>
+            <!-- <button type="button" class="btn btn-secondary" onclick="addRow()">Add Row</button> -->
+            <!-- <button type="button" class="btn btn-info" onclick="applyToAll()">Apply to All</button> -->
+            <!-- <button type="submit" name="submit_schedule" class="btn btn-success w-100">Submit Schedule</button> -->
         </form>
     </div>
 
