@@ -8,7 +8,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 // Check if the logged-in user is an admin
-$admin_email = "admin@example.com"; // Replace with the actual admin email
+$admin_email = "admin@admin.com"; // Default admin email
 if ($_SESSION['user_email'] !== $admin_email) {
     header("Location: index.php");
     exit();

@@ -23,7 +23,12 @@ if (isset($_POST['login'])) {
             $_SESSION['user_name'] = $user['name'];
             $_SESSION['user_email'] = $user['email'];
 
-            echo "<script>alert('Login successful!'); window.location.href='userDashboard.php';</script>";
+            // Redirect based on user role
+            if ($email === "admin@admin.com") {
+                echo "<script>alert('Login successful!'); window.location.href='admin.php';</script>";
+            } else {
+                echo "<script>alert('Login successful!'); window.location.href='userDashboard.php';</script>";
+            }
             exit();
         }
     }
@@ -45,13 +50,12 @@ if (isset($_POST['login'])) {
 <body>
     <div class="main-container">
         <div class="image-section">
-
-        <img src="cpcpa.jpg" alt="DTR System Logo">
+            <img src="cpcpa.jpg" alt="Login Image">
         </div>
 
         <div class="login-container">
             <div class="login-header">
-                <!-- <img src="../img/bfp2.jpg" alt="DTR System Logo"> -->
+                <!-- <img src="logo-cpcpa-png.png" alt="DTR System Logo"> -->
                 <h1>DTR System</h1>
                 <p>Welcome! Please log in to your account.</p>
             </div>
