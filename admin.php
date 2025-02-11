@@ -201,31 +201,33 @@ if (isset($_POST['delete_user'])) {
 
     <!-- Collapsible Navigation Items -->
     <div id="navBar" class="flex flex-col items-center nav-collapsed">
-        <button class="p-4 icon" style="transition-delay: 0.1s;">
+        <button onclick="window.location.href='admin.php'" class="p-4 icon" style="transition-delay: 0.1s;">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5.121 17.804A4.992 4.992 0 0112 15a4.992 4.992 0 016.879 2.804M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M13 5v6h6M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-10 0a1 1 0 001 1h3m10-11h-3m-4 0h-3m-4 0h-3"></path>
           </svg>
         </button>
-      <button class="p-4 icon" style="transition-delay: 0.2s;">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M7 8h10M7 12h4"></path>
-          <path stroke-linecap="round" stroke-linejoin="round" d="M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-        </svg>
-      </button>
-      <button class="p-4 icon" style="transition-delay: 0.3s;">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3"></path>
-          <path stroke-linecap="round" stroke-linejoin="round" d="M21 12c0 5.523-4.477 10-10 10S1 17.523 1 12 5.477 2 11 2c4.025 0 7.429 2.228 9 5.5"></path>
-        </svg>
-      </button>
-      <button class="p-4 icon" style="transition-delay: 0.4s;">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="size-6"><g stroke-width="0" id="SVGRepo_bgCarrier"></g><g stroke-linejoin="round" stroke-linecap="round" id="SVGRepo_tracerCarrier"></g><g id="SVGRepo_iconCarrier">
-            <path class="group-focus:fill-white" fill="#000000" d="M17.2929 14.2929C16.9024 14.6834 16.9024 15.3166 17.2929 15.7071C17.6834 16.0976 18.3166 16.0976 18.7071 15.7071L21.6201 12.7941C21.6351 12.7791 21.6497 12.7637 21.6637 12.748C21.87 12.5648 22 12.2976 22 12C22 11.7024 21.87 11.4352 21.6637 11.252C21.6497 11.2363 21.6351 11.2209 21.6201 11.2059L18.7071 8.29289C18.3166 7.90237 17.6834 7.90237 17.2929 8.29289C16.9024 8.68342 16.9024 9.31658 17.2929 9.70711L18.5858 11H13C12.4477 11 12 11.4477 12 12C12 12.5523 12.4477 13 13 13H18.5858L17.2929 14.2929Z"></path>
-            <path class="group-focus:fill-white" fill="#000" d="M5 2C3.34315 2 2 3.34315 2 5V19C2 20.6569 3.34315 22 5 22H14.5C15.8807 22 17 20.8807 17 19.5V16.7326C16.8519 16.647 16.7125 16.5409 16.5858 16.4142C15.9314 15.7598 15.8253 14.7649 16.2674 14H13C11.8954 14 11 13.1046 11 12C11 10.8954 11.8954 10 13 10H16.2674C15.8253 9.23514 15.9314 8.24015 16.5858 7.58579C16.7125 7.4591 16.8519 7.35296 17 7.26738V4.5C17 3.11929 15.8807 2 14.5 2H5Z"></path></g>
-        </svg>
-      </button>
+        <button onclick="window.location.href='scheduleFiling.php'" class="p-4 icon" style="transition-delay: 0.2s;">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 4h10a2 2 0 012 2v10a2 2 0 01-2 2H7a2 2 0 01-2-2V9a2 2 0 012-2zm3 4h4m-4 4h4"></path>
+          </svg>
+        </button>
+        <button class="p-4 icon" data-bs-toggle="modal" data-bs-target="#addUserModal" style="transition-delay: 0.3s;">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path>
+          </svg>
+        </button>
+        <button class="p-4 icon" data-bs-toggle="modal" data-bs-target="#removeUserModal" style="transition-delay: 0.4s;">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+        <button onclick="window.location.href='logout.php'" class="p-4 icon" style="transition-delay: 0.5s;">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1"></path>
+          </svg>
+        </button>
     </div>
-  </div>
+</div>
 
     <div class="container mt-4" style="margin-left: 70px;">
         <h1 class="mb-4">Admin Panel - DTR System</h1>
@@ -305,10 +307,10 @@ if (isset($_POST['delete_user'])) {
             </table>
         </div>
 
-        <!-- Add User Button -->
-        <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addUserModal">Add User</button>
+        Add User Button
+        <!-- <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addUserModal">Add User</button> -->
         <!-- Remove User Button -->
-        <button class="btn btn-danger mb-3" data-bs-toggle="modal" data-bs-target="#removeUserModal">Remove User</button>
+        <!-- <button class="btn btn-danger mb-3" data-bs-toggle="modal" data-bs-target="#removeUserModal">Remove User</button> -->
     </div>
 
     <!-- Add User Modal -->

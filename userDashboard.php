@@ -21,9 +21,9 @@ $logs_data = json_decode($logs_json, true) ?? [];
 $schedules_data = json_decode($schedules_json, true) ?? [];
 
 // Office location coordinates
-$office_lat = 10.260278;
+$office_lat = 10.260278;   
 $office_lng = 123.829694;
-$allowed_radius = 100; // 100 meters
+$allowed_radius = 10; // 100 meters
 
 // Get current user details
 $user_id = $_SESSION['user_id'];
