@@ -147,6 +147,15 @@ if (!isset($user_logs[$today_date]['pm_arrival'])) {
 if (!isset($user_logs[$today_date]['pm_departure'])) {
     $available_log_types[] = 'PM Departure';
 }
+
+// Get available months with logs
+$available_months = [];
+foreach ($user_logs as $log_date => $log) {
+    $month = substr($log_date, 0, 7); // Extract YYYY-MM
+    if (!in_array($month, $available_months)) {
+        $available_months[] = $month;
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -183,6 +192,12 @@ if (!isset($user_logs[$today_date]['pm_departure'])) {
         }
         .btn {
             margin-bottom: 10px;
+            background-color: #198D5E;
+            color: white;
+        }
+        .btn:hover {
+            background-color: #145a40;
+            color: white;
         }
         .table-responsive {
             overflow-x: auto;
@@ -260,6 +275,14 @@ if (!isset($user_logs[$today_date]['pm_departure'])) {
     <div class="container mt-4">
         <div class="mb-4 d-flex justify-content-between flex-wrap filters-container">
             <button class="btn" id="" data-bs-toggle="modal" data-bs-target="#summaryModal">View Summary</button>
+            <div class="input-button">
+                <select id="monthSelect" class="form-select me-2 mb-2">
+                    <?php foreach ($available_months as $month): ?>
+                        <option value="<?php echo $month; ?>"><?php echo date('F Y', strtotime($month)); ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <button class="btn btn-secondary mb-2" id="generatePdfButton">Generate DTR Form</button>
+            </div>
         </div>
 
         <div class="d-flex justify-content-between mb-3 flex-wrap filters-container">
@@ -465,6 +488,13 @@ function getDistance(lat1, lon1, lat2, lon2) {
     const d = R * c; // in metres
     return d;
 }
+
+document.getElementById('generatePdfButton').addEventListener('click', function() {
+    var selectedMonth = document.getElementById('monthSelect').value;
+    if (selectedMonth) {
+        window.location.href = 'generateDTR.php?month=' + selectedMonth;
+    }
+});
 </script>
 
     <!-- Bootstrap JS -->

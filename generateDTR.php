@@ -54,7 +54,6 @@ function format_time($time) {
 class PDF extends FPDF {
     function Header() {
         $this->SetFont('Arial', 'B', 12);
-        $this->Cell(0, 10, 'CIVIL SERVICE FORM No. 48', 0, 1, 'C');
         $this->Cell(0, 10, 'DAILY TIME RECORD', 0, 1, 'C');
         $this->Ln(5);
     }
@@ -62,7 +61,7 @@ class PDF extends FPDF {
 
 $pdf = new PDF('P', 'mm', 'Letter'); // Letter size (8.5" x 11")
 $pdf->AddPage();
-$pdf->SetFont('Arial', '', 10);
+$pdf->SetFont('Arial', '', 8); // Reduced font size to fit content
 
 // User Info
 $pdf->Cell(95, 8, 'Name: ' . ($user['name'] ?? 'Unknown User'), 0, 0);
@@ -72,8 +71,9 @@ $pdf->Ln(3);
 // Table Header
 $pdf->SetFont('Arial', 'B', 8);
 $headers = ['Day', 'AM Arrival', 'AM Departure', 'PM Arrival', 'PM Departure', 'Rendered Hours'];
-foreach ($headers as $header) {
-    $pdf->Cell(28, 6, $header, 1);
+$widths = [10, 20, 20, 20, 20, 30]; // Adjusted widths to fit the page
+foreach ($headers as $i => $header) {
+    $pdf->Cell($widths[$i], 6, $header, 1);
 }
 $pdf->Ln();
 $pdf->SetFont('Arial', '', 8);
@@ -83,12 +83,12 @@ for ($day = 1; $day <= 31; $day++) {
     $date = $selected_month . '-' . str_pad($day, 2, '0', STR_PAD_LEFT);
     $log = $logs_month[$date] ?? [];
     
-    $pdf->Cell(28, 6, $day, 1);
-    $pdf->Cell(28, 6, format_time($log['am_arrival'] ?? ''), 1);
-    $pdf->Cell(28, 6, format_time($log['am_departure'] ?? ''), 1);
-    $pdf->Cell(28, 6, format_time($log['pm_arrival'] ?? ''), 1);
-    $pdf->Cell(28, 6, format_time($log['pm_departure'] ?? ''), 1);
-    $pdf->Cell(28, 6, calculate_rendered_hours($log), 1);
+    $pdf->Cell($widths[0], 6, $day, 1);
+    $pdf->Cell($widths[1], 6, format_time($log['am_arrival'] ?? ''), 1);
+    $pdf->Cell($widths[2], 6, format_time($log['am_departure'] ?? ''), 1);
+    $pdf->Cell($widths[3], 6, format_time($log['pm_arrival'] ?? ''), 1);
+    $pdf->Cell($widths[4], 6, format_time($log['pm_departure'] ?? ''), 1);
+    $pdf->Cell($widths[5], 6, calculate_rendered_hours($log), 1);
     $pdf->Ln();
 }
 
@@ -98,6 +98,9 @@ $pdf->Cell(0, 8, 'Verified as to the prescribed office hours:', 0, 1, 'C');
 $pdf->Ln(10);
 $pdf->Cell(0, 8, '______________________________', 0, 1, 'C');
 $pdf->Cell(0, 8, 'In-Charge', 0, 1, 'C');
+$pdf->Ln(10);
+$pdf->SetFont('Arial', 'B', 12);
+$pdf->Cell(0, 10, 'CIVIL SERVICE FORM No. 48', 0, 1, 'C');
 
 // Output PDF
 if ($preview) {
