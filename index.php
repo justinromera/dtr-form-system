@@ -1,12 +1,15 @@
 <?php
 session_start();
 
-// Firebase Database URL
-$firebase_url = "https://dtr-system-a192a-default-rtdb.firebaseio.com/users.json";
+// Firebase Database URLs
+$firebase_users_url = "https://dtr-system-a192a-default-rtdb.firebaseio.com/users.json";
+$firebase_admins_url = "https://dtr-system-a192a-default-rtdb.firebaseio.com/admins.json";
 
-// Fetch users from Firebase
-$users_json = file_get_contents($firebase_url);
+// Fetch users and admins from Firebase
+$users_json = file_get_contents($firebase_users_url);
+$admins_json = file_get_contents($firebase_admins_url);
 $users_data = json_decode($users_json, true) ?? [];
+$admins_data = json_decode($admins_json, true) ?? [];
 
 // Handle login
 $loginError = "";
@@ -16,19 +19,26 @@ if (isset($_POST['login'])) {
 
     $user_found = false;
 
-    // Loop through users and check credentials
+    // Check admin credentials
+    foreach ($admins_data as $admin_id => $admin) {
+        if ($admin['email'] === $email && password_verify($password, $admin['password'])) {
+            $_SESSION['user_id'] = $admin_id;
+            $_SESSION['user_name'] = $admin['name'];
+            $_SESSION['user_email'] = $admin['email'];
+
+            echo "<script>alert('Login successful!'); window.location.href='admin.php';</script>";
+            exit();
+        }
+    }
+
+    // Check user credentials
     foreach ($users_data as $user_id => $user) {
         if ($user['email'] === $email && password_verify($password, $user['password'])) {
             $_SESSION['user_id'] = $user_id;
             $_SESSION['user_name'] = $user['name'];
             $_SESSION['user_email'] = $user['email'];
 
-            // Redirect based on user role
-            if ($email === "admin@admin.com") {
-                echo "<script>alert('Login successful!'); window.location.href='admin.php';</script>";
-            } else {
-                echo "<script>alert('Login successful!'); window.location.href='userDashboard.php';</script>";
-            }
+            echo "<script>alert('Login successful!'); window.location.href='userDashboard.php';</script>";
             exit();
         }
     }
