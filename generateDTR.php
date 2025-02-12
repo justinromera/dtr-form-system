@@ -8,98 +8,116 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+// Ensure required GET parameters exist
+$user_id = $_GET['user_id'] ?? $_SESSION['user_id'];
+$selected_month = $_GET['month'] ?? date('Y-m');
+$preview = $_GET['preview'] ?? null;
+
+if (!$user_id || !$selected_month) {
+    die("Error: Missing required parameters.");
+}
+
 // Firebase Database URLs
 $firebase_users_url = "https://dtr-system-a192a-default-rtdb.firebaseio.com/users.json";
 $firebase_logs_url = "https://dtr-system-a192a-default-rtdb.firebaseio.com/user_logs.json";
-$firebase_schedules_url = "https://dtr-system-a192a-default-rtdb.firebaseio.com/user_schedules.json";
 
-// Fetch users, logs, and schedules from Firebase
+// Fetch users and logs from Firebase
 $users_json = file_get_contents($firebase_users_url);
 $logs_json = file_get_contents($firebase_logs_url);
-$schedules_json = file_get_contents($firebase_schedules_url);
+
 $users_data = json_decode($users_json, true) ?? [];
 $logs_data = json_decode($logs_json, true) ?? [];
-$schedules_data = json_decode($schedules_json, true) ?? [];
-
-// Get user ID and month from request
-$user_id = $_GET['user_id'] ?? $_POST['user_id'] ?? null;
-$selected_month = $_GET['month'] ?? $_POST['month'] ?? null;
-
-if (!$user_id || !$selected_month) {
-    echo json_encode(['error' => 'Missing user_id or month']);
-    exit();
-}
 
 // Get user details
 $user = $users_data[$user_id] ?? [];
 $user_logs = $logs_data[$user_id] ?? [];
 
-// Filter logs by selected month
-$filtered_logs = [];
-foreach ($user_logs as $log_date => $log) {
-    if (strpos($log_date, $selected_month) === 0) { // Match YYYY-MM format
-        $filtered_logs[$log_date] = $log;
+// Function to filter logs by month
+function filter_logs_by_month($logs, $month) {
+    $filtered = [];
+    foreach ($logs as $date => $log) {
+        if (strpos($date, $month) === 0) {
+            $filtered[$date] = $log;
+        }
     }
+    return $filtered;
 }
 
-// Function to convert time to 12-hour format
+$logs_month = filter_logs_by_month($user_logs, $selected_month);
+
+// Function to format time
 function format_time($time) {
-    return ($time && $time !== '---' && $time !== 'ABSENT') ? date("g:i A", strtotime($time)) : $time;
+    return ($time && $time !== '---' && $time !== 'ABSENT') ? date("g:i A", strtotime($time)) : "";
 }
 
 // Create PDF
 class PDF extends FPDF {
     function Header() {
         $this->SetFont('Arial', 'B', 12);
-        $this->Cell(0, 10, 'Daily Time Record (Civil Service Form No. 48)', 0, 1, 'C');
+        $this->Cell(0, 10, 'CIVIL SERVICE FORM No. 48', 0, 1, 'C');
+        $this->Cell(0, 10, 'DAILY TIME RECORD', 0, 1, 'C');
         $this->Ln(5);
-    }
-
-    function Footer() {
-        $this->SetY(-15);
-        $this->SetFont('Arial', 'I', 8);
-        $this->Cell(0, 10, 'Page ' . $this->PageNo(), 0, 0, 'C');
     }
 }
 
-$pdf = new PDF();
+$pdf = new PDF('P', 'mm', 'Letter'); // Letter size (8.5" x 11")
 $pdf->AddPage();
-$pdf->SetFont('Arial', '', 12);
+$pdf->SetFont('Arial', '', 10);
 
-// User Information
-$pdf->Cell(0, 10, 'Name: ' . ($user['name'] ?? 'Unknown User'), 0, 1);
-$pdf->Cell(0, 10, 'Month: ' . date('F Y', strtotime($selected_month)), 0, 1);
-$pdf->Ln(5);
+// User Info
+$pdf->Cell(95, 8, 'Name: ' . ($user['name'] ?? 'Unknown User'), 0, 0);
+$pdf->Cell(95, 8, 'For the month of: ' . date('F Y', strtotime($selected_month)), 0, 1);
+$pdf->Ln(3);
 
 // Table Header
-$pdf->SetFont('Arial', 'B', 10);
-$pdf->Cell(20, 10, 'Date', 1);
-$pdf->Cell(30, 10, 'Time In (AM)', 1);
-$pdf->Cell(30, 10, 'Time Out (AM)', 1);
-$pdf->Cell(30, 10, 'Time In (PM)', 1);
-$pdf->Cell(30, 10, 'Time Out (PM)', 1);
-$pdf->Cell(30, 10, 'Total Hours', 1);
+$pdf->SetFont('Arial', 'B', 8);
+$headers = ['Day', 'AM Arrival', 'AM Departure', 'PM Arrival', 'PM Departure', 'Rendered Hours'];
+foreach ($headers as $header) {
+    $pdf->Cell(28, 6, $header, 1);
+}
 $pdf->Ln();
+$pdf->SetFont('Arial', '', 8);
 
-// Table Body
-$pdf->SetFont('Arial', '', 10);
+// Fill Table
 for ($day = 1; $day <= 31; $day++) {
     $date = $selected_month . '-' . str_pad($day, 2, '0', STR_PAD_LEFT);
-    $log = $filtered_logs[$date] ?? [];
-
-    $pdf->Cell(20, 10, $day, 1);
-    $pdf->Cell(30, 10, format_time($log['am_arrival'] ?? '---'), 1);
-    $pdf->Cell(30, 10, format_time($log['am_departure'] ?? '---'), 1);
-    $pdf->Cell(30, 10, format_time($log['pm_arrival'] ?? '---'), 1);
-    $pdf->Cell(30, 10, format_time($log['pm_departure'] ?? '---'), 1);
-    $pdf->Cell(30, 10, '', 1); // Placeholder for total hours
+    $log = $logs_month[$date] ?? [];
+    
+    $pdf->Cell(28, 6, $day, 1);
+    $pdf->Cell(28, 6, format_time($log['am_arrival'] ?? ''), 1);
+    $pdf->Cell(28, 6, format_time($log['am_departure'] ?? ''), 1);
+    $pdf->Cell(28, 6, format_time($log['pm_arrival'] ?? ''), 1);
+    $pdf->Cell(28, 6, format_time($log['pm_departure'] ?? ''), 1);
+    $pdf->Cell(28, 6, calculate_rendered_hours($log), 1);
     $pdf->Ln();
 }
 
-// Save PDF to a temporary file
-$temp_file = tempnam(sys_get_temp_dir(), 'DTR_Form_') . '.pdf';
-$pdf->Output('F', $temp_file);
+$pdf->Ln(5);
+$pdf->Cell(0, 8, 'I certify on my honor that the above is a true and correct report of the hours of work performed.', 0, 1, 'C');
+$pdf->Cell(0, 8, 'Verified as to the prescribed office hours:', 0, 1, 'C');
+$pdf->Ln(10);
+$pdf->Cell(0, 8, '______________________________', 0, 1, 'C');
+$pdf->Cell(0, 8, 'In-Charge', 0, 1, 'C');
 
-// Return the path to the temporary file
-echo json_encode(['file' => $temp_file]);
+// Output PDF
+if ($preview) {
+    $pdf->Output('I', 'DTR_Form_Preview.pdf'); // Preview in browser
+} else {
+    $pdf->Output('D', 'DTR_Form_' . $user_id . '_' . $selected_month . '.pdf'); // Download
+}
+
+// Function to calculate rendered hours
+function calculate_rendered_hours($log) {
+    if (!isset($log['am_arrival'], $log['am_departure'], $log['pm_arrival'], $log['pm_departure'])) {
+        return '---';
+    }
+    $am_in = strtotime($log['am_arrival']);
+    $am_out = strtotime($log['am_departure']);
+    $pm_in = strtotime($log['pm_arrival']);
+    $pm_out = strtotime($log['pm_departure']);
+    $total_seconds = ($am_out - $am_in) + ($pm_out - $pm_in);
+    $hours = floor($total_seconds / 3600);
+    $minutes = floor(($total_seconds % 3600) / 60);
+    return "{$hours}h {$minutes}m";
+}
 ?>

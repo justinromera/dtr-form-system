@@ -3,7 +3,7 @@ session_start();
 
 // Redirect if not logged in
 if (!isset($_SESSION['user_id'])) {
-    header("Location: index.php");
+    header("Location: user.php");
     exit();
 }
 
@@ -78,22 +78,15 @@ function format_time($time) {
     return ($time && $time !== '---' && $time !== 'ABSENT') ? date("g:i A", strtotime($time)) : $time;
 }
 
-// Function to calculate rendered hours based on user log and schedule
-function calculate_rendered_hours($log, $schedule) {
+// Function to calculate total rendered hours for a single log entry
+function calculate_hours($log) {
     if (
         isset($log['am_arrival'], $log['am_departure'], $log['pm_arrival'], $log['pm_departure']) &&
         !empty($log['am_arrival']) && !empty($log['am_departure']) && 
         !empty($log['pm_arrival']) && !empty($log['pm_departure'])
     ) {
-        $am_time_in = isset($schedule['am_time_in']) ? strtotime($schedule['am_time_in']) : strtotime($log['am_arrival']);
-        $pm_time_out = isset($schedule['pm_time_out']) ? strtotime($schedule['pm_time_out']) : strtotime($log['pm_departure']);
-        $am_arrival = max(strtotime($log['am_arrival']), $am_time_in);
-        $am_departure = strtotime($log['am_departure']);
-        $pm_arrival = strtotime($log['pm_arrival']);
-        $pm_departure = min(strtotime($log['pm_departure']), $pm_time_out);
-
-        $morning_seconds = max(0, $am_departure - $am_arrival);
-        $afternoon_seconds = max(0, $pm_departure - $pm_arrival);
+        $morning_seconds = max(0, strtotime($log['am_departure']) - strtotime($log['am_arrival']));
+        $afternoon_seconds = max(0, strtotime($log['pm_departure']) - strtotime($log['pm_arrival']));
         $total_seconds = $morning_seconds + $afternoon_seconds;
 
         $hours = floor($total_seconds / 3600);
@@ -105,24 +98,17 @@ function calculate_rendered_hours($log, $schedule) {
     return '---';
 }
 
-// Function to calculate total rendered hours for all logs of a user
-function calculate_total_rendered_hours($logs, $schedules) {
+// Function to calculate total hours for all logs of a user
+function calculate_total_hours($logs) {
     $total_seconds = 0;
-    foreach ($logs as $log_date => $log) {
+    foreach ($logs as $log) {
         if (
             isset($log['am_arrival'], $log['am_departure'], $log['pm_arrival'], $log['pm_departure']) &&
             !empty($log['am_arrival']) && !empty($log['am_departure']) && 
             !empty($log['pm_arrival']) && !empty($log['pm_departure'])
         ) {
-            $am_time_in = isset($schedules[$log_date]['am_time_in']) ? strtotime($schedules[$log_date]['am_time_in']) : strtotime($log['am_arrival']);
-            $pm_time_out = isset($schedules[$log_date]['pm_time_out']) ? strtotime($schedules[$log_date]['pm_time_out']) : strtotime($log['pm_departure']);
-            $am_arrival = max(strtotime($log['am_arrival']), $am_time_in);
-            $am_departure = strtotime($log['am_departure']);
-            $pm_arrival = strtotime($log['pm_arrival']);
-            $pm_departure = min(strtotime($log['pm_departure']), $pm_time_out);
-
-            $morning_seconds = max(0, $am_departure - $am_arrival);
-            $afternoon_seconds = max(0, $pm_departure - $pm_arrival);
+            $morning_seconds = max(0, strtotime($log['am_departure']) - strtotime($log['am_arrival']));
+            $afternoon_seconds = max(0, strtotime($log['pm_departure']) - strtotime($log['pm_arrival']));
             $total_seconds += $morning_seconds + $afternoon_seconds;
         }
     }
@@ -134,10 +120,10 @@ function calculate_total_rendered_hours($logs, $schedules) {
 }
 
 // Calculate total hours for the selected month based on logs
-$total_hours_month = calculate_total_rendered_hours($filtered_logs, $user_schedules);
+$total_hours_month = calculate_total_hours($filtered_logs);
 
 // Calculate total hours for the entire time based on logs
-$total_hours_all_time = calculate_total_rendered_hours($user_logs, $user_schedules);
+$total_hours_all_time = calculate_total_hours($user_logs);
 
 // Determine if the user has already logged all required times for the day
 $today_date = date('Y-m-d');
@@ -274,11 +260,6 @@ if (!isset($user_logs[$today_date]['pm_departure'])) {
     <div class="container mt-4">
         <div class="mb-4 d-flex justify-content-between flex-wrap filters-container">
             <button class="btn" id="" data-bs-toggle="modal" data-bs-target="#summaryModal">View Summary</button>
-            <form method="POST" action="generateDTR.php" class="d-inline">
-                <input type="hidden" name="user_id" value="<?php echo $user_id; ?>">
-                <input type="hidden" name="month" value="<?php echo $selected_month; ?>">
-                <button type="submit" class="btn btn-primary">Generate DTR Form</button>
-            </form>
         </div>
 
         <div class="d-flex justify-content-between mb-3 flex-wrap filters-container">
@@ -321,7 +302,7 @@ if (!isset($user_logs[$today_date]['pm_departure'])) {
                                 <td data-label="Time Out (AM)"><?php echo isset($log['am_departure']) ? format_time($log['am_departure']) : '---'; ?></td>
                                 <td data-label="Time In (PM)"><?php echo isset($log['pm_arrival']) ? format_time($log['pm_arrival']) : '---'; ?></td>
                                 <td data-label="Time Out (PM)"><?php echo isset($log['pm_departure']) ? format_time($log['pm_departure']) : '---'; ?></td>
-                                <td data-label="Total Hours Rendered"><?php echo calculate_rendered_hours($log, $user_schedules[$log_date] ?? []); ?></td>
+                                <td data-label="Total Hours Rendered"><?php echo calculate_hours($log); ?></td>
                             </tr>
                         <?php endforeach; ?>
                     <?php else : ?>
@@ -443,6 +424,47 @@ document.getElementById('setNowButton').addEventListener('click', function() {
     const minutes = String(now.getMinutes()).padStart(2, '0');
     document.getElementById('logTime').value = `${hours}:${minutes}`;
 });
+
+document.getElementById('logTimeButton').addEventListener('click', function() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            const userLat = position.coords.latitude;
+            const userLng = position.coords.longitude;
+            const officeLat = <?php echo $office_lat; ?>;
+            const officeLng = <?php echo $office_lng; ?>;
+            const distance = getDistance(userLat, userLng, officeLat, officeLng);
+
+            if (distance <= 100) { // 100 meters radius
+                document.getElementById('latitude').value = userLat;
+                document.getElementById('longitude').value = userLng;
+                var timeLogModal = new bootstrap.Modal(document.getElementById('timeLogModal'));
+                timeLogModal.show();
+            } else {
+                alert('You are not in the office. Please log your time from the office location.');
+            }
+        }, function(error) {
+            alert('Error getting your location. Please enable location services and try again.');
+        });
+    } else {
+        alert('Geolocation is not supported by this browser.');
+    }
+});
+
+function getDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371e3; // metres
+    const φ1 = lat1 * Math.PI/180; // φ, λ in radians
+    const φ2 = lat2 * Math.PI/180;
+    const Δφ = (lat2-lat1) * Math.PI/180;
+    const Δλ = (lon2-lon1) * Math.PI/180;
+
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    const d = R * c; // in metres
+    return d;
+}
 </script>
 
     <!-- Bootstrap JS -->
@@ -454,7 +476,7 @@ document.getElementById('setNowButton').addEventListener('click', function() {
             var changePasswordModal = new bootstrap.Modal(document.getElementById('changePasswordModal'));
             changePasswordModal.show();
         <?php endif; ?>
-    </script>
+    </script>   
 
 </body>
 </html>
