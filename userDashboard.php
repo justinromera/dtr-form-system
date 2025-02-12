@@ -7,6 +7,13 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+// Check if the logged-in user is an admin
+$admin_email = "admin@admin.com"; // Default admin email
+if ($_SESSION['user_email'] === $admin_email) {
+    header("Location: admin.php"); // Redirect to admin dashboard
+    exit();
+}
+
 // Firebase Database URLs
 $firebase_users_url = "https://dtr-system-a192a-default-rtdb.firebaseio.com/users.json";
 $firebase_logs_url = "https://dtr-system-a192a-default-rtdb.firebaseio.com/user_logs.json";
