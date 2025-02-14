@@ -152,6 +152,40 @@ if (isset($_POST['delete_user'])) {
     exit();
 }
 
+function get_next_date($date) {
+    $timestamp = strtotime($date);
+    $next_date = date("Y-m-d", strtotime("+1 day", $timestamp));
+    return $next_date;
+}
+
+// Handle Log Addition
+if (isset($_POST['add_log'])) {
+    $add_date = $_POST['log_date'];
+    $log_type = $_POST['log_type'];
+    $new_time = $_POST['new_time'];
+
+    // Ensure AM arrival time is not earlier than 9:00 AM
+    if ($log_type == 'am_arrival' && strtotime($new_time) < strtotime('09:00')) {
+        $new_time = '09:00';
+    }
+
+    $logs_data[$selected_user_id][$add_date][$log_type] = $new_time;
+
+    // Update Firebase
+    $options = [
+        "http" => [
+            "header"  => "Content-type: application/json",
+            "method"  => "PATCH",
+            "content" => json_encode($logs_data[$selected_user_id][$add_date])
+        ]
+    ];
+    $context = stream_context_create($options);
+    file_get_contents("{$firebase_url}user_logs/{$selected_user_id}/{$add_date}.json", false, $context);
+
+    header("Location: admin.php?user={$selected_user_id}");
+    exit();
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -188,48 +222,7 @@ if (isset($_POST['delete_user'])) {
   </style>
 </head>
 <body class="bg-gray-100">
-<div 
-    class="fixed top-1/2 left-2.5 transform -translate-y-1/2 flex flex-col items-center bg-white shadow-md w-16 pt-4 pb-4 rounded-[20px] border border-gray-300">
-    <!-- Toggle Button (Top Icon) -->
-    <button id="menuToggle" class="p-3 mb-2 bg-gray-100 rounded-full shadow">
-      <div class="w-6 h-6 grid grid-cols-2 gap-1">
-        <div class="bg-black w-full h-full"></div>
-        <div class="bg-black w-full h-full"></div>
-        <div class="bg-black w-full h-full"></div>
-        <div class="bg-black w-full h-full"></div>
-      </div>
-    </button>
-
-    <!-- Collapsible Navigation Items -->
-    <div id="navBar" class="flex flex-col items-center nav-collapsed">
-        <button onclick="window.location.href='admin.php'" class="p-4 icon" style="transition-delay: 0.1s;">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M13 5v6h6M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-10 0a1 1 0 001 1h3m10-11h-3m-4 0h-3m-4 0h-3"></path>
-          </svg>
-        </button>
-        <button onclick="window.location.href='scheduleFiling.php'" class="p-4 icon" style="transition-delay: 0.2s;">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 4h10a2 2 0 012 2v10a2 2 0 01-2 2H7a2 2 0 01-2-2V9a2 2 0 012-2zm3 4h4m-4 4h4"></path>
-          </svg>
-        </button>
-        <button class="p-4 icon" data-bs-toggle="modal" data-bs-target="#addUserModal" style="transition-delay: 0.3s;">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path>
-          </svg>
-        </button>
-        <button class="p-4 icon" data-bs-toggle="modal" data-bs-target="#removeUserModal" style="transition-delay: 0.4s;">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
-        </button>
-        <button onclick="window.location.href='logout.php'" class="p-4 icon" style="transition-delay: 0.5s;">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1"></path>
-          </svg>
-        </button>
-    </div>
-</div>
-
+    <?php include 'nav.php'; ?>
     <div class="container mt-4" style="margin-left: 70px;">
         <h1 class="mb-4">Admin Panel - DTR System</h1>
 
@@ -244,7 +237,8 @@ if (isset($_POST['delete_user'])) {
                 <?php endforeach; ?>
             </select>
         </form>
-
+            <!-- Add Log Button -->
+            <button class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#addLogModal" onclick="setAddData()">Add Log</button>
         <!-- User Logs Table -->
         <div class="table-responsive">
             <table class="table table-hover">
@@ -403,10 +397,50 @@ if (isset($_POST['delete_user'])) {
         </div>
     </div>
 
+    <!-- Add Log Modal -->
+    <div class="modal fade" id="addLogModal" tabindex="-1" aria-labelledby="addLogModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addLogModalLabel">Add Log</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="log_date" class="form-label">Date:</label>
+                            <input type="date" name="log_date" id="add_log_date" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="log_type" class="form-label">Log Type:</label>
+                            <select name="log_type" id="add_log_type" class="form-select" required>
+                                <option value="am_arrival">AM Arrival</option>
+                                <option value="am_departure">AM Departure</option>
+                                <option value="pm_arrival">PM Arrival</option>
+                                <option value="pm_departure">PM Departure</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="new_time" class="form-label">New Time:</label>
+                            <input type="time" name="new_time" id="add_new_time" class="form-control" required>
+                        </div>
+                        <button type="submit" name="add_log" class="btn btn-primary">Add Log</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         function setEditData(date) {
             document.getElementById("edit_date").value = date;
             document.getElementById("log_date").value = date;
+        }
+
+        function setAddData() {
+            const lastLogDate = "<?php echo end(array_keys($logs_data[$selected_user_id] ?? [])); ?>";
+            const nextDate = "<?php echo get_next_date(end(array_keys($logs_data[$selected_user_id] ?? []))); ?>";
+            document.getElementById("add_log_date").value = nextDate;
         }
 
         const menuToggle = document.getElementById("menuToggle");
