@@ -56,113 +56,43 @@ if (isset($_POST['login'])) {
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <style>
-        /* Add responsive styles */
-        .login-container {
-            width: 100%;
-            max-width: 400px;
-            margin: 20px auto;
-            padding: 20px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            border-radius: 8px;
-            background-color: #fff;
-            box-sizing: border-box;
-        }
-
-        .login-header h1 {
-            font-size: 24px;
-        }
-
-        .login-header p {
-            font-size: 14px;
-        }
-
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        .form-group label {
-            font-size: 14px;
-        }
-
-        .form-group .input-group {
-            display: flex;
-            align-items: center;
-        }
-
-        .form-group .input-group input {
-            flex: 1;
-            padding: 10px;
-            font-size: 14px;
-            box-sizing: border-box;
-        }
-
-        .form-group .input-group .eye-icon {
-            margin-left: -30px;
-            cursor: pointer;
-        }
-
-        .form-group button {
-            width: 100%;
-            padding: 10px;
-            font-size: 16px;
-            background-color: #007bff;
-            color: #fff;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        .form-group button:hover {
-            background-color: #0056b3;
-        }
-
-        .error-message {
-            font-size: 14px;
-        }
-
-        @media (max-width: 400px) {
-            .login-container {
-                padding: 10px;
-                margin: 50px;
-            }
-
-            .form-group .input-group input {
-                padding: 8px;
-            }
-
-            .form-group button {
-                padding: 8px;
-                font-size: 14px;
-            }
-        }
-    </style>
 </head>
 <body>
-    <div class="login-container">
-        <div class="login-header">
-            <h1>DTR System</h1>
-            <p>Welcome! Please log in to your account.</p>
+    <div class="main-container">
+        <div class="image-section">
+            <img src="cpcpa.jpg" alt="Login Image">
         </div>
-        <form action="" method="POST" id="loginForm">
-            <div class="form-group">
-                <label for="email">Email</label>
-                <div class="input-group">
-                    <input type="email" id="email" name="email" placeholder="Email" required>
+
+        <div class="login-container">
+            <div class="login-header">
+                <!-- <img src="logo-cpcpa-png.png" alt="DTR System Logo"> -->
+                <h1>DTR System</h1>
+                <p>Welcome! Please log in to your account.</p>
+            </div>
+            <form action="" method="POST" id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <div class="input-group">
+                        <input type="email" id="email" name="email" placeholder="Email" required>
+                    </div>
                 </div>
-            </div>
-            <div class="form-group">
-                <label for="password">Password</label>
-                <div class="input-group">
-                    <input type="password" id="password" name="password" placeholder="Password" required>
-                    <i class="fas fa-eye eye-icon" onclick="togglePasswordVisibility('password')"></i>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <div class="input-group">
+                        <input type="password" id="password" name="password" placeholder="Password" required>
+                        <i class="fas fa-eye eye-icon" onclick="togglePasswordVisibility('password')"></i>
+                    </div>
                 </div>
-            </div>
-            <div class="form-group">
-                <button type="submit" name="login">Login</button>
-            </div>
-            <p style="color: red;" class="error-message"><?php echo htmlspecialchars($loginError); ?></p>
-        </form>
+                <div class="form-group">
+                    <button type="submit" name="login">Login</button>
+                </div>
+                <p style="color: red;" class="error-message"><?php echo htmlspecialchars($loginError); ?></p>
+            </form>
+            <!-- <div class="login-footer">
+                <p>Don't have an account? <a href="signup.php">Signup here</a></p>
+                <p><a href="../forgot_password.php" id="forgotPasswordLink">Forgot your password?</a></p>
+            </div> -->
+        </div>
     </div>
 
     <script>
