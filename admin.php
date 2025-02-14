@@ -152,6 +152,40 @@ if (isset($_POST['delete_user'])) {
     exit();
 }
 
+function get_next_date($date) {
+    $timestamp = strtotime($date);
+    $next_date = date("Y-m-d", strtotime("+1 day", $timestamp));
+    return $next_date;
+}
+
+// Handle Log Addition
+if (isset($_POST['add_log'])) {
+    $add_date = $_POST['log_date'];
+    $log_type = $_POST['log_type'];
+    $new_time = $_POST['new_time'];
+
+    // Ensure AM arrival time is not earlier than 9:00 AM
+    if ($log_type == 'am_arrival' && strtotime($new_time) < strtotime('09:00')) {
+        $new_time = '09:00';
+    }
+
+    $logs_data[$selected_user_id][$add_date][$log_type] = $new_time;
+
+    // Update Firebase
+    $options = [
+        "http" => [
+            "header"  => "Content-type: application/json",
+            "method"  => "PATCH",
+            "content" => json_encode($logs_data[$selected_user_id][$add_date])
+        ]
+    ];
+    $context = stream_context_create($options);
+    file_get_contents("{$firebase_url}user_logs/{$selected_user_id}/{$add_date}.json", false, $context);
+
+    header("Location: admin.php?user={$selected_user_id}");
+    exit();
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -244,7 +278,8 @@ if (isset($_POST['delete_user'])) {
                 <?php endforeach; ?>
             </select>
         </form>
-
+            <!-- Add Log Button -->
+            <button class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#addLogModal" onclick="setAddData()">Add Log</button>
         <!-- User Logs Table -->
         <div class="table-responsive">
             <table class="table table-hover">
@@ -403,10 +438,50 @@ if (isset($_POST['delete_user'])) {
         </div>
     </div>
 
+    <!-- Add Log Modal -->
+    <div class="modal fade" id="addLogModal" tabindex="-1" aria-labelledby="addLogModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addLogModalLabel">Add Log</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="log_date" class="form-label">Date:</label>
+                            <input type="date" name="log_date" id="add_log_date" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="log_type" class="form-label">Log Type:</label>
+                            <select name="log_type" id="add_log_type" class="form-select" required>
+                                <option value="am_arrival">AM Arrival</option>
+                                <option value="am_departure">AM Departure</option>
+                                <option value="pm_arrival">PM Arrival</option>
+                                <option value="pm_departure">PM Departure</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="new_time" class="form-label">New Time:</label>
+                            <input type="time" name="new_time" id="add_new_time" class="form-control" required>
+                        </div>
+                        <button type="submit" name="add_log" class="btn btn-primary">Add Log</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         function setEditData(date) {
             document.getElementById("edit_date").value = date;
             document.getElementById("log_date").value = date;
+        }
+
+        function setAddData() {
+            const lastLogDate = "<?php echo end(array_keys($logs_data[$selected_user_id] ?? [])); ?>";
+            const nextDate = "<?php echo get_next_date(end(array_keys($logs_data[$selected_user_id] ?? []))); ?>";
+            document.getElementById("add_log_date").value = nextDate;
         }
 
         const menuToggle = document.getElementById("menuToggle");
