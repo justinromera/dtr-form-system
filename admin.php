@@ -375,7 +375,7 @@ if (isset($_POST['add_log'])) {
                         <input type="hidden" name="edit_date" id="edit_date">
                         <div class="mb-3">
                             <label for="log_date" class="form-label">Date:</label>
-                            <input type="date" name="log_date" id="log_date" class="form-control" required>
+                            <input type="date" name="log_date" id="log_date" class="form-control" required disabled>
                         </div>
                         <div class="mb-3">
                             <label for="log_type" class="form-label">Log Type:</label>
@@ -409,7 +409,7 @@ if (isset($_POST['add_log'])) {
                     <form method="POST">
                         <div class="mb-3">
                             <label for="log_date" class="form-label">Date:</label>
-                            <input type="date" name="log_date" id="add_log_date" class="form-control" required>
+                            <input type="date" name="log_date" id="add_log_date" class="form-control" required disabled>
                         </div>
                         <div class="mb-3">
                             <label for="log_type" class="form-label">Log Type:</label>
