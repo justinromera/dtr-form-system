@@ -39,3 +39,32 @@
         </button>
     </div>
 </div>
+
+<script>
+document.getElementById('menuToggle').addEventListener('click', function() {
+    const navBar = document.getElementById('navBar');
+    navBar.classList.toggle('nav-collapsed');
+    navBar.classList.toggle('nav-expanded');
+});
+</script>
+
+<style>
+.nav-collapsed .icon {
+    opacity: 0;
+    transform: translateX(-100%);
+}
+
+.nav-expanded .icon {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.nav-collapsed {
+    width: 0;
+    overflow: hidden;
+}
+
+.nav-expanded {
+    width: auto;
+}
+</style>

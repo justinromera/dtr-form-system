@@ -500,6 +500,8 @@ document.getElementById('generatePdfButton').addEventListener('click', function(
     var selectedMonth = document.getElementById('monthSelect').value;
     if (selectedMonth) {
         window.location.href = 'generateDTR.php?month=' + selectedMonth;
+    } else {
+        alert('Please select a month first.');
     }
 });
 </script>

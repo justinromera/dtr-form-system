@@ -11,8 +11,35 @@ session_start();
 $user_id = $_SESSION['user_id'] ?? $_GET['user_id'] ?? null;
 $user_logs = $logs_data[$user_id] ?? [];
 
+// Fetch user details from Firebase
+$firebase_users_url = "https://dtr-system-a192a-default-rtdb.firebaseio.com/users/$user_id.json";
+$user_json = file_get_contents($firebase_users_url);
+$user_data = json_decode($user_json, true) ?? [];
+$user_name = $user_data['name'] ?? '';
+
+$selected_month = $_GET['month'] ?? date('Y-m');
+
+// Convert to readable format (e.g., "January 2025")
+$formatted_month = date('F Y', strtotime($selected_month . '-01'));
+
+// Filter logs based on selected month
+$filtered_logs = [];
+foreach ($user_logs as $log_date => $log) {
+    if (strpos($log_date, $selected_month) === 0) { // Match YYYY-MM format
+        $filtered_logs[$log_date] = $log;
+    }
+}
+
+for ($day = 1; $day <= 31; $day++) {
+    $date = sprintf('%s-%02d', $selected_month, $day);
+    if (!isset($filtered_logs[$date])) {
+        $filtered_logs[$date] = ['am_arrival' => '', 'am_departure' => '', 'pm_arrival' => '', 'pm_departure' => ''];
+    }
+}
 class PDF extends FPDF {
     function Header() {
+        global $formatted_month, $user_name;
+        
         $this->SetFont('Arial','I', 8);
         $this->Cell(30, -1, 'Civil Service Form No. 48', 0, 1, 'C');
         $this->Ln(2);
@@ -20,14 +47,14 @@ class PDF extends FPDF {
         $this->Cell(190, 12, 'DAILY TIME RECORD', 0, 1, 'C');
         $this->Ln(2);
         $this->Cell(190, -10, '_______', 0, 1, 'C');
-        $this->Cell(190, 30, '---------------------------------------------------------', 0, 1, 'C');
+        $this->Cell(190, 30, '', 0, 1, 'C');
         $this->SetFont('Arial','BI', 10);
-        $this->Cell(190, -25, '(Name)', 0, 1, 'C');
+        $this->Cell(190, -25, "(Name: $user_name)", 0, 1, 'C');
 
         // Additional details
         $this->SetFont('Arial', 'I', 10);
         $this->Ln(12);
-        $this->Cell(180, 10, 'For the month of ____________________, 20_______', 0, 1, 'C');
+        $this->Cell(180, 10, "For the month of $formatted_month,", 0, 1, 'C');
         $this->Cell(185, 3, 'Official hours of arrival                   Regular Days ________', 0, 1, 'C');
         $this->Cell(196, 7, 'and departure                      Saturdays ____________', 0, 1, 'C');
     }
@@ -40,7 +67,7 @@ class PDF extends FPDF {
         $this->Cell(160, 5, 'daily at the time of arrival and departure from office.', 0, 1, 'C');
         $this->Ln(2);
         $this->Cell(143, 4, '______________________________', 0, 1, 'R');
-        $this->Cell(0, 6, 'In-Charge', 0, 1, 'C');
+        $this->Cell(240, 6, 'In-Charge', 0, 1, 'C');
     }
 }
 
@@ -73,7 +100,7 @@ for ($day = 1; $day <= 31; $day++) {
     $pdf->SetX(58);
     $pdf->Cell(10, 5, $day, 1, 0, 'C');
 
-    $date = sprintf('%s-%02d', date('Y-m'), $day);
+    $date = sprintf('%s-%02d', $selected_month, $day);
     $log = $user_logs[$date] ?? [];
 
     // Ensure all keys exist
@@ -145,5 +172,5 @@ $pdf->Cell(14, 8, $total_minutes . 'm', 1, 0, 'C'); // Total Minutes
 $pdf->Ln();
 // Ensure no whitespace or errors before output
 ob_clean();
-$pdf->Output('I', 'DTR_Form.pdf');
+$pdf->Output('D', 'DTR_' . $selected_month . '.pdf');
 ?>
